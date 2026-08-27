@@ -87,6 +87,20 @@
   #map{position:relative}
   .leaflet-control-zoom{border:2px solid var(--hud-border)!important}
   .leaflet-control-zoom a{background:var(--panel)!important;color:var(--fg)!important;border-radius:0!important}
+
+  .leaflet-popup-content-wrapper{background:var(--panel);border:3px solid var(--hud-border);box-shadow:0 4px 0 var(--hud-inner);padding:0}
+  .leaflet-popup-content{margin:0!important;width:240px!important;font-family:var(--font-dot);color:var(--fg)}
+  .leaflet-popup-tip-container{display:none}
+  .leaflet-popup-close-button{color:var(--fg)!important;font-size:16px!important;padding:4px 6px!important}
+  .poi-pop{display:flex;flex-direction:column}
+  .poi-pop .ph{width:100%;height:120px;object-fit:cover;display:block;background:var(--track)}
+  .poi-pop .ic{width:100%;height:110px;display:flex;align-items:center;justify-content:center;background:var(--track)}
+  .poi-pop .body{padding:10px 12px}
+  .poi-pop .nm{font-size:12px;font-weight:700;color:var(--fg);margin-bottom:2px}
+  .poi-pop .cat{font-size:10px;color:var(--gold);margin-bottom:6px}
+  .poi-pop .ex{font-size:10.5px;color:var(--dim);line-height:1.6;margin-bottom:4px}
+  .poi-pop .src{font-size:8.5px;color:var(--dim2)}
+  .poi-pop .src a{color:var(--dim2)}
 </style>
 </head>
 <body>
@@ -1463,6 +1477,111 @@ function gmapsUrl(c, wpCount){
 // ---------------- 表示 ----------------
 const onPhone = matchMedia('(max-width:760px)').matches;
 
+// ---------------- スポットの写真・説明（Wikipedia/Wikidata。無料・APIキー不要） ----------------
+const photoCache = new Map();
+const escapeHtml = (s)=>String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const ICONS = {
+  leaf: '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21c8 0 14-6 14-14V5h-2C9 5 3 11 3 19v2z"/><path d="M5 21c3-6 6-9 12-12"/></svg>',
+  torii: '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18"/><path d="M5 8v13"/><path d="M19 8v13"/><path d="M2 5c3-1.3 6.5-2 10-2s7 .7 10 2"/></svg>',
+  cup: '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h12v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8z"/><path d="M16 10h2a2 2 0 0 1 0 4h-2"/></svg>',
+  drop: '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12z"/></svg>',
+  building: '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>',
+};
+function catIcon(cat){
+  if(['park','water','green','view'].includes(cat)) return {svg:ICONS.leaf, color:BAR.nature};
+  if(['shrine','sight'].includes(cat)) return {svg:ICONS.torii, color:BAR.sight};
+  if(cat==='onsen') return {svg:ICONS.drop, color:BAR.buzz};
+  if(['cafe','sweets','food','drink'].includes(cat)) return {svg:ICONS.cup, color:BAR.buzz};
+  return {svg:ICONS.building, color:'#9089b8'};
+}
+
+/** OSMタグにWikipedia/Wikidata/Commons写真の手がかりがあるか */
+function poiHasSource(tags){
+  if(!tags) return false;
+  if(tags.wikipedia) return true;
+  if(tags.wikidata) return true;
+  if(tags.image && /commons\.wikimedia\.org\/wiki\/File:|^File:/.test(tags.image)) return true;
+  return false;
+}
+
+/** Wikipedia要約 → だめならWikidataのP18画像 → だめならOSMのimageタグ、の順で試す。全部無料・APIキー不要 */
+async function resolvePhoto(poi){
+  const tags = poi.tags||{};
+  try{
+    if(tags.wikipedia){
+      const idx = tags.wikipedia.indexOf(':');
+      const lang = idx>0 ? tags.wikipedia.slice(0,idx) : 'ja';
+      const title = idx>0 ? tags.wikipedia.slice(idx+1) : tags.wikipedia;
+      const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+      if(r.ok){
+        const j = await r.json();
+        if(j.thumbnail || j.extract){
+          return { img: j.thumbnail && j.thumbnail.source, extract: j.extract,
+            link: j.content_urls && j.content_urls.desktop && j.content_urls.desktop.page, src:'Wikipedia' };
+        }
+      }
+    }
+    if(tags.wikidata){
+      const r = await fetch(`https://www.wikidata.org/wiki/Special:EntityData/${tags.wikidata}.json`);
+      if(r.ok){
+        const j = await r.json();
+        const ent = j.entities && j.entities[tags.wikidata];
+        const claim = ent && ent.claims && ent.claims.P18 && ent.claims.P18[0];
+        const file = claim && claim.mainsnak && claim.mainsnak.datavalue && claim.mainsnak.datavalue.value;
+        const desc = ent && ent.descriptions && (ent.descriptions.ja || ent.descriptions.en);
+        if(file || desc){
+          return {
+            img: file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=320` : null,
+            extract: desc && desc.value, link:`https://www.wikidata.org/wiki/${tags.wikidata}`, src:'Wikidata',
+          };
+        }
+      }
+    }
+    if(tags.image){
+      const m = /File:(.+)$/.exec(tags.image);
+      if(m) return { img:`https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(m[1])}?width=320`,
+        extract:null, link: tags.image.startsWith('http')?tags.image:null, src:'Wikimedia Commons' };
+    }
+  }catch(e){ /* オフライン等。アイコン表示のまま */ }
+  return null;
+}
+
+function poiPopupHtml(poi, state){ // state: 'loading' | data(object|null after fetch)
+  const {svg,color} = catIcon(poi.cat);
+  const photo = state && state.img
+    ? `<img class="ph" src="${state.img}" alt="${escapeHtml(poi.name||'')}" loading="lazy">`
+    : `<div class="ic" style="color:${color}">${svg}</div>`;
+  const ex = state==='loading'
+    ? `<div class="ex" style="color:var(--dim2)">くわしい情報をさがしています…</div>`
+    : state && state.extract
+      ? `<div class="ex">${escapeHtml(state.extract.slice(0,90))}${state.extract.length>90?'…':''}</div>`
+      : `<div class="ex" style="color:var(--dim2)">写真・説明は見つかりませんでした</div>`;
+  const src = state && state.src && state!=='loading'
+    ? `<div class="src">出典: ${state.link?`<a href="${state.link}" target="_blank" rel="noopener">${state.src}</a>`:state.src}</div>` : '';
+  return `<div class="poi-pop">${photo}<div class="body">
+    <div class="nm">${escapeHtml(poi.name||poi.label)}</div>
+    <div class="cat">${escapeHtml(poi.label)}</div>
+    ${ex}${src}
+  </div></div>`;
+}
+
+/** マーカーに、写真つきポップアップ（クリック）とホバー用の短いツールチップを付ける */
+function attachPoiPopup(marker, poi){
+  marker.bindTooltip(`${poi.name}${poi.label?'（'+poi.label+'）':''}`);
+  const tags = poi.tags||{};
+  if(!poiHasSource(tags)){ marker.bindPopup(poiPopupHtml(poi,null), {maxWidth:240,minWidth:220}); return; }
+  marker.bindPopup(poiPopupHtml(poi,'loading'), {maxWidth:240,minWidth:220});
+  let started=false;
+  marker.on('popupopen', async ()=>{
+    if(started) return; started=true;
+    const key = tags.wikipedia || tags.wikidata || tags.image;
+    let data = photoCache.has(key) ? photoCache.get(key) : undefined;
+    if(data===undefined){ data = await resolvePhoto(poi); photoCache.set(key,data); }
+    marker.setPopupContent(poiPopupHtml(poi,data));
+  });
+}
+
 function bar(label, val, max){
   const pct = Math.max(2, Math.min(100, Math.round(val/max*100)));
   const col = label==='しぜん'?BAR.nature:label==='にぎわい'?BAR.buzz:BAR.sight;
@@ -1480,11 +1599,15 @@ function render(){
     line.on('click',()=>select(i));
     if(i===state.sel){
       c.highlights.forEach(h=>{
-        L.circleMarker([h.poi.lat,h.poi.lon],{radius:6,color:'#f0e6d2',weight:2,fillColor:'#4f8fd6',fillOpacity:1})
-          .addTo(routeLayer).bindTooltip(`${h.poi.name}（${h.poi.label}）`);
+        const m = L.circleMarker([h.poi.lat,h.poi.lon],{radius:6,color:'#f0e6d2',weight:2,fillColor:'#4f8fd6',fillOpacity:1})
+          .addTo(routeLayer);
+        attachPoiPopup(m, h.poi);
       });
-      if(c.reward) L.circleMarker([c.reward.lat,c.reward.lon],{radius:9,color:'#f0e6d2',weight:3,fillColor:'#e8c25f',fillOpacity:1})
-        .addTo(routeLayer).bindTooltip(`ゴール前：${c.reward.name}`,{permanent:false});
+      if(c.reward){
+        const m = L.circleMarker([c.reward.lat,c.reward.lon],{radius:9,color:'#f0e6d2',weight:3,fillColor:'#e8c25f',fillOpacity:1})
+          .addTo(routeLayer);
+        attachPoiPopup(m, {...c.reward, label:'ゴール前・'+(c.reward.label||'ご褒美')});
+      }
     }
 
     if(i===state.sel){
