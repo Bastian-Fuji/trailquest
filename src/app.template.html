@@ -300,14 +300,20 @@ function poiFilters(reward, nature){
   const f = [
     'node["leisure"~"^(park|garden)$"]',
     'node["natural"~"^(water|beach|wood)$"]',
-    'node["tourism"~"^(viewpoint|attraction|artwork)$"]',
+    'node["tourism"~"^(viewpoint|attraction|artwork|museum|gallery)$"]',
     'node["historic"]',
+    'node["heritage"]',
+    'node["man_made"="tower"]',
     'node["amenity"="place_of_worship"]',
     'node["railway"="station"]',
     'way["leisure"~"^(park|garden)$"]',
     'way["natural"~"^(water|wood)$"]',
     'way["landuse"~"^(forest|grass)$"]',
     'way["waterway"="riverbank"]',
+    'way["tourism"~"^(viewpoint|attraction|artwork|museum|gallery)$"]',
+    'way["historic"]',
+    'way["heritage"]',
+    'way["man_made"="tower"]',
     'way["amenity"="place_of_worship"]',
   ];
   const rewardFilters = {
@@ -578,7 +584,7 @@ const ICONS = {
 };
 function catIcon(cat){
   if(['park','water','green','view'].includes(cat)) return {svg:ICONS.leaf, color:BAR.nature};
-  if(['shrine','sight'].includes(cat)) return {svg:ICONS.torii, color:BAR.sight};
+  if(cat==='sight') return {svg:ICONS.torii, color:BAR.sight};
   if(cat==='onsen') return {svg:ICONS.drop, color:BAR.buzz};
   if(['cafe','sweets','food','drink'].includes(cat)) return {svg:ICONS.cup, color:BAR.buzz};
   return {svg:ICONS.building, color:'#9089b8'};

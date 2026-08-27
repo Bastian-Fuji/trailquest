@@ -90,11 +90,12 @@
       return { cat: 'water', label: '水辺', nature: 1.0 };
     if (t.landuse === 'forest' || t.natural === 'wood' || t.landuse === 'grass')
       return { cat: 'green', label: '緑地', nature: 0.8 };
-    // --- 名所
-    if (t.amenity === 'place_of_worship')
-      return { cat: 'shrine', label: t.religion === 'shinto' ? '神社' : '寺社', sight: 0.9, nature: 0.4 };
-    if (t.tourism === 'attraction' || t.tourism === 'artwork' || t.historic)
-      return { cat: 'sight', label: '名所', sight: 1.0 };
+    // --- 名所（神社・寺・史跡・記念碑・タワー・博物館などをまとめて「名所」1本にする。
+    //     「その街のシンボル・綺麗な建物や風景・有名な物や場所」を広く拾う）
+    if (t.amenity === 'place_of_worship'
+      || t.tourism === 'attraction' || t.tourism === 'artwork' || t.tourism === 'museum' || t.tourism === 'gallery'
+      || t.man_made === 'tower' || t.historic || t.heritage)
+      return { cat: 'sight', label: '名所', sight: 1.0, nature: t.amenity === 'place_of_worship' ? 0.4 : 0 };
     // --- 賑わい
     if (t.railway === 'station' || t.public_transport === 'station')
       return { cat: 'station', label: '駅', buzz: 1.0 };
