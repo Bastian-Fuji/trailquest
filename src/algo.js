@@ -67,6 +67,11 @@
   // 交通量が多く走りにくい＝コスト増、かつ「賑やか」寄り
   const BIG_ROAD = new Set(['primary', 'primary_link', 'secondary', 'secondary_link', 'trunk']);
   const QUIET_ROAD = new Set(['footway', 'path', 'pedestrian', 'living_street', 'track', 'cycleway']);
+  // historic=* の値 → 表示ラベル。無ければ「史跡」で受ける
+  const HISTORIC_LABELS = {
+    castle: '城', ruins: '遺跡', archaeological_site: '遺跡', monument: '記念碑',
+    memorial: '記念碑', fort: '城郭', city_gate: '城門', tomb: '古墳・墓所', manor: '邸宅',
+  };
 
   /** POIカテゴリ判定。該当しなければ null */
   function classifyPoi(t) {
@@ -90,12 +95,16 @@
       return { cat: 'water', label: '水辺', nature: 1.0 };
     if (t.landuse === 'forest' || t.natural === 'wood' || t.landuse === 'grass')
       return { cat: 'green', label: '緑地', nature: 0.8 };
-    // --- 名所（神社・寺・史跡・記念碑・タワー・博物館などをまとめて「名所」1本にする。
-    //     「その街のシンボル・綺麗な建物や風景・有名な物や場所」を広く拾う）
-    if (t.amenity === 'place_of_worship'
-      || t.tourism === 'attraction' || t.tourism === 'artwork' || t.tourism === 'museum' || t.tourism === 'gallery'
-      || t.man_made === 'tower' || t.historic || t.heritage)
-      return { cat: 'sight', label: '名所', sight: 1.0, nature: t.amenity === 'place_of_worship' ? 0.4 : 0 };
+    // --- 名所（スコア上は cat:'sight' に統一。「その街のシンボル・綺麗な建物や風景・
+    //     有名な物や場所」を広く拾いつつ、表示ラベルは種類ごとに出し分ける）
+    if (t.amenity === 'place_of_worship')
+      return { cat: 'sight', label: t.religion === 'shinto' ? '神社' : '寺社', sight: 0.9, nature: 0.4 };
+    if (t.tourism === 'museum') return { cat: 'sight', label: '博物館', sight: 1.0 };
+    if (t.tourism === 'gallery') return { cat: 'sight', label: '美術館', sight: 1.0 };
+    if (t.man_made === 'tower') return { cat: 'sight', label: 'タワー', sight: 1.0 };
+    if (t.historic) return { cat: 'sight', label: HISTORIC_LABELS[t.historic] || '史跡', sight: 1.0 };
+    if (t.tourism === 'attraction' || t.tourism === 'artwork') return { cat: 'sight', label: '名所', sight: 1.0 };
+    if (t.heritage) return { cat: 'sight', label: '文化財', sight: 1.0 };
     // --- 賑わい
     if (t.railway === 'station' || t.public_transport === 'station')
       return { cat: 'station', label: '駅', buzz: 1.0 };
