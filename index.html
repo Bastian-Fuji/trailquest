@@ -1509,16 +1509,27 @@ function catIcon(cat){
   return {svg:ICONS.building, color:'#9089b8'};
 }
 
-/** OSMタグにWikipedia/Wikidata/Commons写真の手がかりがあるか */
-function poiHasSource(tags){
-  if(!tags) return false;
-  if(tags.wikipedia) return true;
-  if(tags.wikidata) return true;
-  if(tags.image && /commons\.wikimedia\.org\/wiki\/File:|^File:/.test(tags.image)) return true;
-  return false;
+/** 最後の手段：座標から半径100m以内でジオタグ付きのCommons画像を探す。
+ *  そのスポットそのものを写した写真とは限らないので「付近の写真」と明記して返す。 */
+async function commonsNearby(lat, lon){
+  const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=geosearch`
+    + `&ggscoord=${lat}|${lon}&ggsradius=100&ggslimit=1&ggsnamespace=6`
+    + `&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=320&format=json&origin=*`;
+  const r = await fetch(url);
+  if(!r.ok) return null;
+  const j = await r.json();
+  const pages = j.query && j.query.pages;
+  if(!pages) return null;
+  const page = Object.values(pages)[0];
+  const info = page && page.imageinfo && page.imageinfo[0];
+  if(!info) return null;
+  const rawDesc = info.extmetadata && info.extmetadata.ImageDescription && info.extmetadata.ImageDescription.value;
+  const extract = rawDesc ? rawDesc.replace(/<[^>]+>/g,'').trim() : null;
+  return { img: info.thumburl || info.url, extract, link: info.descriptionurl, src:'Wikimedia Commons（付近の写真）' };
 }
 
-/** Wikipedia要約 → だめならWikidataのP18画像 → だめならOSMのimageタグ、の順で試す。全部無料・APIキー不要 */
+/** Wikipedia要約 → だめならWikidataのP18画像 → だめならOSMのimageタグ →
+ *  だめなら座標付近のCommons写真、の順で試す。全部無料・APIキー不要 */
 async function resolvePhoto(poi){
   const tags = poi.tags||{};
   try{
@@ -1556,6 +1567,8 @@ async function resolvePhoto(poi){
       if(m) return { img:`https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(m[1])}?width=320`,
         extract:null, link: tags.image.startsWith('http')?tags.image:null, src:'Wikimedia Commons' };
     }
+    const near = await commonsNearby(poi.lat, poi.lon);
+    if(near) return near;
   }catch(e){ /* オフライン等。アイコン表示のまま */ }
   return null;
 }
@@ -1579,16 +1592,16 @@ function poiPopupHtml(poi, state){ // state: 'loading' | data(object|null after 
   </div></div>`;
 }
 
-/** マーカーに、写真つきポップアップ（クリック）とホバー用の短いツールチップを付ける */
+/** マーカーに、写真つきポップアップ（クリック）とホバー用の短いツールチップを付ける。
+ *  OSMタグに手がかりが無くても、座標付近のCommons写真を探しに行くので毎回「さがしています…」から始める。 */
 function attachPoiPopup(marker, poi){
   marker.bindTooltip(`${poi.name}${poi.label?'（'+poi.label+'）':''}`);
   const tags = poi.tags||{};
-  if(!poiHasSource(tags)){ marker.bindPopup(poiPopupHtml(poi,null), {maxWidth:240,minWidth:220}); return; }
   marker.bindPopup(poiPopupHtml(poi,'loading'), {maxWidth:240,minWidth:220});
   let started=false;
   marker.on('popupopen', async ()=>{
     if(started) return; started=true;
-    const key = tags.wikipedia || tags.wikidata || tags.image;
+    const key = tags.wikipedia || tags.wikidata || tags.image || `${poi.lat.toFixed(5)},${poi.lon.toFixed(5)}`;
     let data = photoCache.has(key) ? photoCache.get(key) : undefined;
     if(data===undefined){ data = await resolvePhoto(poi); photoCache.set(key,data); }
     marker.setPopupContent(poiPopupHtml(poi,data));
