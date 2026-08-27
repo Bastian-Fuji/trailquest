@@ -62,7 +62,8 @@
   .bar-track{flex:1;height:12px;background:var(--track);border:2px solid var(--hud-inner)}
   .bar-fill{height:100%}
   .bar-row .n{font-size:10px;color:var(--fg);width:20px;text-align:right}
-  .tag{display:inline-block;background:transparent;border:2px solid var(--line);padding:2px 7px;margin:2px 4px 0 0;font-size:9.5px;color:var(--dim)}
+  .tag{display:inline-block;background:transparent;border:2px solid var(--line);padding:2px 7px;margin:2px 4px 0 0;font-size:9.5px;color:var(--dim);cursor:pointer}
+  .tag:hover{border-color:var(--gold);color:var(--gold)}
   .tag.rw{border-color:var(--gold);color:var(--gold)}
   .actions{display:flex;flex-direction:column;gap:6px;margin-top:10px}
   .act{display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:12px;border:none;background:none;color:var(--dim);cursor:pointer;text-align:left;text-decoration:none}
@@ -87,6 +88,9 @@
   #map{position:relative}
   .leaflet-control-zoom{border:2px solid var(--hud-border)!important}
   .leaflet-control-zoom a{background:var(--panel)!important;color:var(--fg)!important;border-radius:0!important}
+
+  .leaflet-tooltip{background:var(--panel)!important;border:2px solid var(--hud-border)!important;color:var(--fg)!important;font-family:var(--font-dot)!important;font-size:11px!important;padding:4px 8px!important;box-shadow:none!important}
+  .leaflet-tooltip:before{display:none}
 
   .leaflet-popup-content-wrapper{background:var(--panel);border:3px solid var(--hud-border);box-shadow:0 4px 0 var(--hud-inner);padding:0}
   .leaflet-popup-content{margin:0!important;width:240px!important;font-family:var(--font-dot);color:var(--fg)}
@@ -1111,6 +1115,15 @@ setTiles('pale');
 $('tiles').onclick=(e)=>{ const t=e.target.dataset.t; if(t) setTiles(t); };
 const routeLayer = L.layerGroup().addTo(map);
 let startMarker = null;
+let hlMarkers = {};   // 「みちすがらのポイント」タグ → 対応する地図マーカー（render()のたびに作り直す）
+
+/** サイドバーのタグをクリックしたとき：地図をそのスポット中心に寄せて、ポップアップ（写真・説明）を開く */
+function jumpToPoi(key){
+  const m = hlMarkers[key];
+  if(!m) return;
+  map.once('moveend', ()=>m.openPopup());
+  map.flyTo(m.getLatLng(), Math.max(map.getZoom(),17), {duration:0.6});
+}
 
 const PRESETS = [
   ['上野',35.7141,139.7774],['蔵前',35.7057,139.7912],['皇居',35.6852,139.7528],
@@ -1592,26 +1605,29 @@ function bar(label, val, max){
 
 function render(){
   routeLayer.clearLayers();
+  hlMarkers = {};
   const cards=[];
   state.courses.forEach((c,i)=>{
     const col=COLORS[i%3];
     const line=L.polyline(c.coords,{color:col,weight:i===state.sel?7:4,opacity:i===state.sel?0.95:0.4}).addTo(routeLayer);
     line.on('click',()=>select(i));
     if(i===state.sel){
-      c.highlights.forEach(h=>{
+      c.highlights.forEach((h,hi)=>{
         const m = L.circleMarker([h.poi.lat,h.poi.lon],{radius:6,color:'#f0e6d2',weight:2,fillColor:'#4f8fd6',fillOpacity:1})
           .addTo(routeLayer);
         attachPoiPopup(m, h.poi);
+        hlMarkers[hi]=m;
       });
       if(c.reward){
         const m = L.circleMarker([c.reward.lat,c.reward.lon],{radius:9,color:'#f0e6d2',weight:3,fillColor:'#e8c25f',fillOpacity:1})
           .addTo(routeLayer);
         attachPoiPopup(m, {...c.reward, label:'ゴール前・'+(c.reward.label||'ご褒美')});
+        hlMarkers.reward=m;
       }
     }
 
     if(i===state.sel){
-      const hl=c.highlights.slice(0,6).map(h=>`<span class="tag">${h.poi.name}</span>`).join('');
+      const hl=c.highlights.slice(0,6).map((h,hi)=>`<span class="tag" data-poi="${hi}">${escapeHtml(h.poi.name)}</span>`).join('');
       cards.push(`<div class="card sel" data-i="${i}"><div class="inner">
         <h3><span class="dot" style="background:${col}"></span>コース${i+1}
           <span class="badge">★せんたくちゅう</span></h3>
@@ -1622,7 +1638,7 @@ function render(){
           ${bar('にぎわい', c.mix.buzz, 30)}
           ${bar('めいしょ', c.mix.sight, 30)}
         </div>
-        <div>${c.reward?`<span class="tag rw">♨ ゴール前：${c.reward.name}</span>`:''}${hl||'<span class="meta">（名前付きスポットなし）</span>'}</div>
+        <div>${c.reward?`<span class="tag rw" data-poi="reward">♨ ゴール前：${escapeHtml(c.reward.name)}</span>`:''}${hl||'<span class="meta">（名前付きスポットなし）</span>'}</div>
         <div class="actions">
           ${onPhone
             ? `<a class="act main" href="${gmapsUrl(c,3)}" target="_blank" rel="noopener">Googleマップで開く</a>
@@ -1645,6 +1661,8 @@ function render(){
   $('cards').innerHTML=cards.join('');
   const b=L.latLngBounds(state.courses[state.sel].coords); map.fitBounds(b,{padding:[30,30]});
   $('cards').onclick=(e)=>{
+    const poiTag=e.target.closest('.tag');
+    if(poiTag && poiTag.dataset.poi!=null){ e.preventDefault(); jumpToPoi(poiTag.dataset.poi); return; }
     const g=e.target.dataset.gpx;
     if(g!=null){ e.preventDefault(); downloadGpx(state.courses[+g],+g); return; }
     const q=e.target.dataset.qr;
