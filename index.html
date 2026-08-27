@@ -89,7 +89,13 @@
   .qrurl{font-size:9px;color:#6b5f42;word-break:break-all;margin-top:6px;text-align:left}
   .err{color:var(--buzz)}
 
-  .dexbtn{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:11px;flex:0 0 auto}
+  .mapbtns{position:absolute;z-index:500;left:10px;bottom:10px;display:flex;background:var(--panel);
+    border:2px solid var(--hud-border);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+  .mapbtns[hidden]{display:none}
+  .dexbtn{display:flex;align-items:center;gap:5px;padding:7px 9px;font-size:11px;flex:0 0 auto;
+    border:none;border-right:2px solid var(--hud-inner);background:none;color:var(--dim)}
+  .dexbtn:last-child{border-right:none}
+  .dexbtn:hover{color:var(--gold);border-color:var(--hud-inner)}
   .dexbtn .dexcount{background:var(--gold);color:#241a08;font-weight:700;padding:1px 6px;font-size:10px}
   .dex-overlay{position:fixed;inset:0;background:rgba(10,8,20,.78);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px}
   .dex-overlay[hidden]{display:none}
@@ -183,23 +189,7 @@
       このページはJavaScriptが動かない状態で開かれています。メールやファイルアプリの
       <b style="display:inline">プレビュー画面</b>ではなく、Safari や Chrome などのブラウザで開き直してください。
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <div class="title">TRAIL<span class="accent">QUEST</span></div>
-      <div style="display:flex;gap:6px">
-        <button id="runlogbtn" class="dexbtn">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>
-          記録<span class="dexcount" id="runlogcount">0</span>
-        </button>
-        <button id="dexbtn" class="dexbtn">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H12v18H6.5A2.5 2.5 0 0 0 4 22V4.5z"/><path d="M20 4.5A2.5 2.5 0 0 0 17.5 2H12v18h5.5a2.5 2.5 0 0 1 2.5 2V4.5z"/></svg>
-          図鑑<span class="dexcount" id="dexcount">0</span>
-        </button>
-        <button id="favsbtn" class="dexbtn" title="お気に入り" aria-label="お気に入り">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.6 1.7 7-6.3-3.9-6.3 3.9 1.7-7L2 9.5l7.1-.6z"/></svg>
-          <span class="dexcount" id="favscount">0</span>
-        </button>
-      </div>
-    </div>
+    <div class="title">TRAIL<span class="accent">QUEST</span></div>
     <div class="sub">OpenStreetMap のデータから、要望に合う周回コースをその場で計算します。地図をクリックすると起点を変更できます。<br>※アルゴリズム検証用。距離は概算です。</div>
 
     <label>起点 <span class="val" id="ptxt">上野</span></label>
@@ -239,6 +229,20 @@
       <button data-t="pale" class="on">地図</button>
       <button data-t="photo">航空写真</button>
       <button data-t="osm">詳細</button>
+    </div>
+    <div class="mapbtns" id="mapbtns">
+      <button id="runlogbtn" class="dexbtn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>
+        記録<span class="dexcount" id="runlogcount">0</span>
+      </button>
+      <button id="dexbtn" class="dexbtn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H12v18H6.5A2.5 2.5 0 0 0 4 22V4.5z"/><path d="M20 4.5A2.5 2.5 0 0 0 17.5 2H12v18h5.5a2.5 2.5 0 0 1 2.5 2V4.5z"/></svg>
+        図鑑<span class="dexcount" id="dexcount">0</span>
+      </button>
+      <button id="favsbtn" class="dexbtn" title="お気に入り" aria-label="お気に入り">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.6 1.7 7-6.3-3.9-6.3 3.9 1.7-7L2 9.5l7.1-.6z"/></svg>
+        <span class="dexcount" id="favscount">0</span>
+      </button>
     </div>
     <div class="viewbar" id="viewbar" hidden>
       <span id="viewbarlabel"></span>
@@ -1956,10 +1960,12 @@ function showSavedRoute(entry){
   map.fitBounds(L.latLngBounds(entry.coords), {padding:[30,30]});
   $('viewbarlabel').textContent = `${fmtDate(entry.ts)}・${entry.startName}起点・${entry.distanceKm}km`;
   $('viewbar').hidden = false;
+  $('mapbtns').hidden = true; // viewbarと同じ隅を取り合わないよう、表示中はこちらを隠す
 }
 function closeSavedView(){
   viewLayer.clearLayers();
   $('viewbar').hidden = true;
+  $('mapbtns').hidden = false;
   if(state.courses && state.courses[state.sel])
     map.fitBounds(L.latLngBounds(state.courses[state.sel].coords), {padding:[30,30]});
 }
