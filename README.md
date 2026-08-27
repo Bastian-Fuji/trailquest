@@ -26,6 +26,13 @@ npm run serve           # http://localhost:8080
 - フォントは `Press Start 2P`（英数字）＋ `DotGothic16`（日本語のドットフォント）、角丸は使わない
 - 地図そのもの（地理院タイル／OpenStreetMap）は実データのまま。実際に走る道を確認する用途なので、
   そこだけは意図的にリアルに保っている
+- **名所図鑑**：地図のマーカーやタグをクリックして見たスポットを `localStorage` に記録し、
+  種類ごと（神社・博物館・銭湯…）に集めていける。アカウント登録・サーバーは無し
+- **標高・高低差**：国土地理院の標高API（無料・APIキー不要）で、選択中のコースの獲得標高・
+  下り・標高レンジを表示。経路を最大30点に間引いて問い合わせている
+- **PWA対応**：`manifest.json` + Service Worker（`sw.js`）で、スマホのホーム画面に追加できる。
+  Service Workerがキャッシュするのはアプリ本体だけで、Overpass・Wikipedia等の外部データ取得には
+  一切手を出さない
 
 アルゴリズム本体・データ取得まわりの設計判断は runcourse の `docs/architecture.md` と
 `docs/roadmap.md` を参照（このリポジトリにはまだコピーしていません）。
@@ -35,9 +42,13 @@ npm run serve           # http://localhost:8080
 ```
 build.js                 src/ を1ファイルのindex.htmlに合成する（依存なし）
 index.html               ビルド済みの成果物。これ単体で動く
-src/algo.js              中核アルゴリズム（runcourseと同一）
+src/algo.js              中核アルゴリズム（runcourseと同一 + POIにosmIdを付与）
 src/qr.js                QRコード生成（runcourseと同一）
 src/app.template.html    UI・地図表示・データ取得（8bit RPG風に作り直し）
+manifest.json            PWAマニフェスト
+sw.js                    Service Worker（アプリ本体だけをキャッシュ）
+icons/                   PWAアイコン（tools/make-icons.js で生成、npm依存なし）
+tools/make-icons.js      アイコンPNGを手書きPNGエンコーダで生成するスクリプト
 test/                    テスト一式（runcourseから流用）
 ```
 

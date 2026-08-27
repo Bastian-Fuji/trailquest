@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TRAILQUEST プロトタイプ v0.1</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#171226">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TrailQuest">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap">
 <style>
@@ -1161,6 +1168,14 @@ const $ = (id)=>document.getElementById(id);
 const COLORS = ['#d3573a','#4f8fd6','#5fa06e'];
 const BAR = {nature:'#57b06b', buzz:'#e0607a', sight:'#e8c25f'};
 
+// ---------------- PWA（ホーム画面に追加）----------------
+// file:// やlocalhost以外のhttpでは動かないので、対応環境でだけ静かに登録する
+if('serviceWorker' in navigator && window.isSecureContext){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{ /* 対応してないだけなので黙って諦める */ });
+  });
+}
+
 // ---------------- 地図 ----------------
 const map = L.map('map',{zoomControl:true}).setView([35.7118,139.7770],14);
 const TILES = {
@@ -1557,6 +1572,53 @@ function gmapsUrl(c, wpCount){
     + '&travelmode=walking&waypoints=' + encodeURIComponent(wp);
 }
 
+// ---------------- 標高・高低差（国土地理院の標高API。無料・APIキー不要） ----------------
+/** 経路全体を律儀に1点ずつ問い合わせると距離が長いほどリクエストが膨れるので、
+ *  最大30点までに間引く（15kmのコースでも30回で済む） */
+function sampleForElevation(coords, maxPoints){
+  const n = coords.length;
+  if(n<=maxPoints) return coords;
+  const step = (n-1)/(maxPoints-1);
+  const out=[];
+  for(let i=0;i<maxPoints;i++) out.push(coords[Math.round(i*step)]);
+  return out;
+}
+async function fetchElevation(lat, lon){
+  try{
+    const r = await fetch(`https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lon}&lat=${lat}&outtype=JSON`);
+    if(!r.ok) return null;
+    const j = await r.json();
+    const e = parseFloat(j.elevation);
+    return Number.isFinite(e) ? e : null;
+  }catch(e){ return null; }
+}
+/** 獲得標高・下り・標高レンジを返す。データが足りなければnull */
+async function computeElevation(c){
+  const pts = sampleForElevation(c.coords, 30);
+  const elevs = await Promise.all(pts.map(([la,lo])=>fetchElevation(la,lo)));
+  const valid = elevs.filter((e)=>e!=null);
+  if(valid.length<2) return null;
+  let gain=0, loss=0;
+  for(let i=1;i<valid.length;i++){
+    const d = valid[i]-valid[i-1];
+    if(d>0) gain+=d; else loss-=d;
+  }
+  return { gain:Math.round(gain), loss:Math.round(loss), min:Math.round(Math.min(...valid)), max:Math.round(Math.max(...valid)) };
+}
+function formatElev(p){
+  return p ? `獲得標高 ▲${p.gain}m ▼${p.loss}m（標高${p.min}〜${p.max}m）` : '標高データを取得できませんでした';
+}
+/** 選択中コースの標高を（未取得なら）取りに行って、取れたらカードに反映する */
+function loadElevationFor(i){
+  const c = state.courses[i];
+  if(!c) return;
+  if(c.elevProfile !== undefined){ const el=$('elev'+i); if(el) el.textContent=formatElev(c.elevProfile); return; }
+  computeElevation(c).then((p)=>{
+    c.elevProfile = p;
+    if(state.sel===i){ const el=$('elev'+i); if(el) el.textContent=formatElev(p); }
+  });
+}
+
 // ---------------- 表示 ----------------
 const onPhone = matchMedia('(max-width:760px)').matches;
 
@@ -1765,6 +1827,7 @@ function render(){
           <span class="badge">★せんたくちゅう</span></h3>
         <div class="km-big">${(c.total/1000).toFixed(2)}<span class="unit">km</span></div>
         <div class="meta">もくひょうとのズレ ${(c.err*100).toFixed(0)}% ／ かぶり ${(c.overlap*100).toFixed(0)}%</div>
+        <div class="meta" id="elev${i}">${c.elevProfile!==undefined ? formatElev(c.elevProfile) : '標高を調べています…'}</div>
         <div class="bars">
           ${bar('しぜん', c.mix.nature, 30)}
           ${bar('にぎわい', c.mix.buzz, 30)}
@@ -1791,6 +1854,7 @@ function render(){
     }
   });
   $('cards').innerHTML=cards.join('');
+  loadElevationFor(state.sel);
   const b=L.latLngBounds(state.courses[state.sel].coords); map.fitBounds(b,{padding:[30,30]});
   $('cards').onclick=(e)=>{
     const poiTag=e.target.closest('.tag');
