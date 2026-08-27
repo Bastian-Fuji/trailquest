@@ -1,0 +1,24 @@
+{
+  "name": "trailquest",
+  "version": "0.1.0",
+  "description": "走りたい距離・道の雰囲気・帰りのご褒美から、周回ランニングコースを生成するプロトタイプ（8bit RPG風UI）",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "test": "npm run test:algo && npm run test:isolated && npm run test:qr",
+    "test:algo": "node test/algo.test.js",
+    "test:isolated": "node test/isolated.test.js",
+    "test:perf": "node test/perf.test.js",
+    "test:ui": "node build.js && node test/ui.test.js",
+    "test:all": "npm run test && npm run test:perf && npm run test:ui && npm run test:share && npm run test:fetch && npm run test:mobile",
+    "serve": "node -e \"const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>{const fp=p.join(__dirname,q.url==='/'?'index.html':q.url.split('?')[0]);f.readFile(fp,(e,d)=>{if(e){s.writeHead(404);s.end('not found');return}s.writeHead(200,{'Content-Type':fp.endsWith('.html')?'text/html; charset=utf-8':'text/plain'});s.end(d)})}).listen(8080,()=>console.log('http://localhost:8080'))\"",
+    "test:qr": "node test/qr.test.js",
+    "test:share": "node build.js && node test/share.test.js",
+    "test:fetch": "node build.js && node test/fetch.test.js",
+    "test:mobile": "node build.js && node test/mobile.test.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  },
+  "license": "MIT"
+}

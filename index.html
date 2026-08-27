@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRAILQUEST プロトタイプ v0.1</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap">
+<style>
+  :root{
+    --font-px:'Press Start 2P',monospace;
+    --font-dot:'DotGothic16',monospace;
+    --bg:#171226; --panel:#1d1733; --hud-border:#f0e6d2; --hud-inner:#4a3f78;
+    --track:#2c2450; --card:#241d42; --line:#4a3f78;
+    --fg:#f3ecd9; --dim:#b6acd6; --dim2:#7c72a3;
+    --gold:#e8c25f; --nature:#57b06b; --buzz:#e0607a; --sight:#e8c25f;
+    --c1:#d3573a; --c2:#4f8fd6; --c3:#5fa06e;
+  }
+  *{box-sizing:border-box;border-radius:0!important}
+  html,body{margin:0;height:100%;font-family:var(--font-dot);background:var(--bg);color:var(--fg)}
+  #wrap{display:flex;height:100%}
+  #panel{width:400px;flex:0 0 400px;background:var(--panel);border-right:4px solid var(--hud-border);box-shadow:4px 0 0 var(--hud-inner);overflow-y:auto;padding:18px 20px}
+  #map{flex:1;min-width:0;position:relative;background:#1a1730}
+  .title{font-family:var(--font-px);font-size:18px;color:var(--fg);letter-spacing:1px;margin:0 0 4px}
+  .title .accent{color:var(--gold)}
+  .sub{font-size:12px;color:var(--dim);margin-bottom:16px;line-height:1.6}
+  label{display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;font-weight:700;letter-spacing:.5px}
+  input[type=text]{width:100%;padding:9px 10px;background:var(--track);border:2px solid var(--hud-inner);color:var(--fg);font-family:var(--font-dot);font-size:13px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;background:var(--track);border:2px solid var(--hud-inner)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:20px;background:var(--gold);border:2px solid var(--hud-border);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:16px;height:20px;background:var(--gold);border:2px solid var(--hud-border);cursor:pointer}
+  input[type=range]::-moz-range-track{background:var(--track);height:14px;border:2px solid var(--hud-inner)}
+  .row{display:flex;gap:6px}
+  .row>*{flex:1}
+  button{padding:9px 10px;background:var(--card);border:2px solid var(--hud-inner);color:var(--fg);font-family:var(--font-dot);font-size:12px;cursor:pointer}
+  button:hover{border-color:var(--gold)}
+  button.on{background:var(--gold);color:#241a08;border-color:var(--hud-border);font-weight:700}
+  #go{width:100%;margin-top:18px;padding:13px;background:var(--gold);color:#241a08;font-weight:700;font-size:14px;border:2px solid var(--hud-border)}
+  #go:disabled{background:var(--track);color:var(--dim2);cursor:wait;border-color:var(--line)}
+  .val{float:right;color:var(--gold);font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips button{flex:0 0 auto;padding:6px 10px;font-size:11px}
+  #log{margin-top:14px;font-size:11px;color:var(--dim);white-space:pre-wrap;line-height:1.7;border-top:2px solid var(--line);padding-top:10px;min-height:20px}
+  .card{border:2px solid var(--hud-inner);padding:10px 12px;margin-top:10px;cursor:pointer;background:var(--card)}
+  .card.tag{display:flex;align-items:center;gap:10px;padding:9px 12px}
+  .card.tag:hover{border-color:var(--gold)}
+  .card.tag .dot{width:10px;height:10px;flex:0 0 auto}
+  .card.tag .nm{font-size:12px;font-weight:700}
+  .card.tag .km{margin-left:auto;font-family:var(--font-px);font-size:12px;color:var(--dim)}
+  .card.tag .go{color:var(--gold);font-size:11px}
+  .card.sel{background:var(--hud-border);padding:5px;cursor:default}
+  .card.sel .inner{background:var(--panel);border:3px solid var(--hud-inner);padding:16px}
+  .card.sel h3{margin:0 0 4px;font-size:13px;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;flex:0 0 auto}
+  .card.sel .badge{font-size:9.5px;color:var(--gold);border:2px solid var(--gold);padding:2px 6px}
+  .km-big{font-family:var(--font-px);font-size:30px;color:var(--fg);margin:8px 0 4px}
+  .km-big .unit{font-family:var(--font-dot);font-size:13px;color:var(--dim);margin-left:4px}
+  .meta{font-size:10.5px;color:var(--dim2);line-height:1.7}
+  .bars{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+  .bar-row{display:flex;align-items:center;gap:7px}
+  .bar-row .lb{font-size:10px;color:var(--dim);width:50px;flex:0 0 auto}
+  .bar-track{flex:1;height:12px;background:var(--track);border:2px solid var(--hud-inner)}
+  .bar-fill{height:100%}
+  .bar-row .n{font-size:10px;color:var(--fg);width:20px;text-align:right}
+  .tag{display:inline-block;background:transparent;border:2px solid var(--line);padding:2px 7px;margin:2px 4px 0 0;font-size:9.5px;color:var(--dim)}
+  .tag.rw{border-color:var(--gold);color:var(--gold)}
+  .actions{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .act{display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:12px;border:none;background:none;color:var(--dim);cursor:pointer;text-align:left;text-decoration:none}
+  .act::before{content:'';width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid transparent}
+  .act.main{color:var(--fg)}
+  .act.main::before{border-left-color:var(--gold)}
+  .act.ghost{color:var(--dim2)}
+  .qrbox{margin-top:10px;padding:12px;background:#fdf8ec;border:3px solid var(--hud-border);text-align:center}
+  .qrbox svg{width:min(200px,55vw);height:auto;display:block;margin:0 auto}
+  .qrnote{font-size:10px;color:#3a3320;margin-top:8px;line-height:1.6;text-align:left;font-family:var(--font-dot)}
+  .qrurl{font-size:9px;color:#6b5f42;word-break:break-all;margin-top:6px;text-align:left}
+  .err{color:var(--buzz)}
+  @media(max-width:760px){#wrap{flex-direction:column}#panel{width:100%;flex:0 0 auto;max-height:52%}#map{height:48%}}
+  .leaflet-container{background:#1a1730}
+  #jswarn{background:#3a1622;border:2px solid var(--buzz);padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.7;color:#ffd9d9}
+  #jswarn b{display:block;font-size:13px;margin-bottom:4px;color:#ff9d9d}
+  body.ready #jswarn{display:none}
+  .tiles{display:flex;gap:0;position:absolute;z-index:500;right:10px;top:10px;overflow:hidden;box-shadow:0 2px 0 rgba(0,0,0,.4);border:2px solid var(--hud-border)}
+  .tiles button{border:0;border-right:2px solid var(--hud-inner);background:var(--panel);font-size:11px;padding:7px 11px;color:var(--dim)}
+  .tiles button:last-child{border-right:0}
+  .tiles button.on{background:var(--gold);color:#241a08;font-weight:700}
+  #map{position:relative}
+  .leaflet-control-zoom{border:2px solid var(--hud-border)!important}
+  .leaflet-control-zoom a{background:var(--panel)!important;color:var(--fg)!important;border-radius:0!important}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="panel">
+    <div id="jswarn">
+      <b>アプリが起動していません</b>
+      このページはJavaScriptが動かない状態で開かれています。メールやファイルアプリの
+      <b style="display:inline">プレビュー画面</b>ではなく、Safari や Chrome などのブラウザで開き直してください。
+    </div>
+    <div class="title">TRAIL<span class="accent">QUEST</span></div>
+    <div class="sub">OpenStreetMap のデータから、要望に合う周回コースをその場で計算します。地図をクリックすると起点を変更できます。<br>※アルゴリズム検証用。距離は概算です。</div>
+
+    <label>起点 <span class="val" id="ptxt">上野</span></label>
+    <div class="chips" id="presets"></div>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="addr" placeholder="住所・駅名で検索（例：蔵前）">
+      <button style="flex:0 0 60px" id="find">検索</button>
+    </div>
+    <button id="here" style="width:100%;margin-top:6px">📍 現在地から走る</button>
+
+    <label>走る距離 <span class="val" id="dkm">5.0 km</span></label>
+    <input type="range" id="dist" min="1" max="15" step="0.5" value="5">
+
+    <label>どんな雰囲気の道がいい？ <span class="val" id="natv">自然多め</span></label>
+    <input type="range" id="nat" min="-1" max="1" step="0.25" value="0.5">
+    <div class="meta" style="display:flex;justify-content:space-between"><span>← 人が多い・賑やか</span><span>自然・静か →</span></div>
+
+    <label>神社・名所も通りたい <span class="val" id="sgtv">ふつう</span></label>
+    <input type="range" id="sgt" min="0" max="1" step="0.25" value="0.5">
+
+    <label>帰りのご褒美</label>
+    <div class="chips" id="rewards"></div>
+
+    <button id="go">▶ コースをさがす</button>
+    <div class="row" style="margin-top:8px">
+      <button id="diag">接続テスト</button>
+      <button id="copyq">クエリをコピー</button>
+      <button id="loadbtn">JSONを読み込む</button>
+    </div>
+    <input type="file" id="loadfile" accept=".json,.osm,application/json" style="display:none">
+    <div id="log"></div>
+    <div id="cards"></div>
+  </div>
+  <div id="map">
+    <div class="tiles" id="tiles">
+      <button data-t="pale" class="on">地図</button>
+      <button data-t="photo">航空写真</button>
+      <button data-t="osm">詳細</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ===========================================================================
+ *  runcourse core algorithm  (v0.1 prototype)
+ *  ---------------------------------------------------------------------
+ *  Overpass(OSM) の生JSON  →  歩行ネットワーク  →  要望に沿った周回コース
+ *
+ *  ブラウザ / Node どちらでも動くように書いてある（末尾でexport切り替え）。
+ * =========================================================================*/
+(function (root) {
+  'use strict';
+
+  // ---------------------------------------------------------------- utils
+  const R_EARTH = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+
+  function haversine(aLat, aLon, bLat, bLon) {
+    const dLat = toRad(bLat - aLat);
+    const dLon = toRad(bLon - aLon);
+    const la1 = toRad(aLat), la2 = toRad(bLat);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLon / 2) ** 2;
+    return 2 * R_EARTH * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+
+  function bearing(aLat, aLon, bLat, bLon) {
+    const y = Math.sin(toRad(bLon - aLon)) * Math.cos(toRad(bLat));
+    const x = Math.cos(toRad(aLat)) * Math.sin(toRad(bLat)) -
+      Math.sin(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.cos(toRad(bLon - aLon));
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+
+  function angDiff(a, b) { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+
+  /** 単純な二分ヒープ（Dijkstra用） */
+  class Heap {
+    constructor() { this.a = []; }
+    get size() { return this.a.length; }
+    push(key, val) {
+      const a = this.a; a.push([key, val]);
+      let i = a.length - 1;
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (a[p][0] <= a[i][0]) break;
+        const t = a[p]; a[p] = a[i]; a[i] = t; i = p;
+      }
+    }
+    pop() {
+      const a = this.a, top = a[0], last = a.pop();
+      if (a.length) {
+        a[0] = last;
+        let i = 0;
+        for (;;) {
+          const l = 2 * i + 1, r = l + 1; let m = i;
+          if (l < a.length && a[l][0] < a[m][0]) m = l;
+          if (r < a.length && a[r][0] < a[m][0]) m = r;
+          if (m === i) break;
+          const t = a[m]; a[m] = a[i]; a[i] = t; i = m;
+        }
+      }
+      return top;
+    }
+  }
+
+  // ------------------------------------------------------- OSM tag rules
+  // 歩ける道（motorway/trunk は除外）
+  const WALKABLE = new Set(['footway', 'path', 'pedestrian', 'steps', 'living_street',
+    'residential', 'unclassified', 'tertiary', 'tertiary_link', 'secondary',
+    'secondary_link', 'primary', 'primary_link', 'service', 'track', 'cycleway', 'road']);
+  // 交通量が多く走りにくい＝コスト増、かつ「賑やか」寄り
+  const BIG_ROAD = new Set(['primary', 'primary_link', 'secondary', 'secondary_link', 'trunk']);
+  const QUIET_ROAD = new Set(['footway', 'path', 'pedestrian', 'living_street', 'track', 'cycleway']);
+
+  /** POIカテゴリ判定。該当しなければ null */
+  function classifyPoi(t) {
+    if (!t) return null;
+    const name = t.name || t['name:ja'] || '';
+    // --- ご褒美（ゴール付近に置きたいもの）
+    if (t.amenity === 'public_bath' || t['bath:type'] === 'onsen' || t.leisure === 'sauna')
+      return { cat: 'onsen', label: t['bath:type'] === 'onsen' ? '温泉' : (t.leisure === 'sauna' ? 'サウナ' : '銭湯'), reward: true };
+    if (t.amenity === 'cafe') return { cat: 'cafe', label: 'カフェ', reward: true, buzz: 1 };
+    if (t.shop === 'bakery' || t.shop === 'confectionery' || t.amenity === 'ice_cream')
+      return { cat: 'sweets', label: 'ベーカリー/甘味', reward: true, buzz: 0.6 };
+    if (t.amenity === 'restaurant' || t.amenity === 'fast_food')
+      return { cat: 'food', label: t.cuisine ? `飲食（${t.cuisine}）` : '飲食店', reward: true, buzz: 1 };
+    if (t.amenity === 'bar' || t.amenity === 'pub')
+      return { cat: 'drink', label: '一杯', reward: true, buzz: 1 };
+    // --- 景観・自然
+    if (t.tourism === 'viewpoint') return { cat: 'view', label: '展望スポット', nature: 1.0, sight: 1.0 };
+    if (t.leisure === 'park' || t.leisure === 'garden')
+      return { cat: 'park', label: t.leisure === 'garden' ? '庭園' : '公園', nature: 1.0 };
+    if (t.natural === 'water' || t.waterway === 'riverbank' || t.natural === 'beach')
+      return { cat: 'water', label: '水辺', nature: 1.0 };
+    if (t.landuse === 'forest' || t.natural === 'wood' || t.landuse === 'grass')
+      return { cat: 'green', label: '緑地', nature: 0.8 };
+    // --- 名所
+    if (t.amenity === 'place_of_worship')
+      return { cat: 'shrine', label: t.religion === 'shinto' ? '神社' : '寺社', sight: 0.9, nature: 0.4 };
+    if (t.tourism === 'attraction' || t.tourism === 'artwork' || t.historic)
+      return { cat: 'sight', label: '名所', sight: 1.0 };
+    // --- 賑わい
+    if (t.railway === 'station' || t.public_transport === 'station')
+      return { cat: 'station', label: '駅', buzz: 1.0 };
+    if (t.shop && name) return { cat: 'shop', label: '商店', buzz: 0.5 };
+    return null;
+  }
+
+  // ------------------------------------------------------------- グラフ構築
+  /**
+   * Overpass の JSON（node/way/relation の element配列）からグラフとPOIを作る。
+   * @returns {lat:Float64Array, lon:Float64Array, head:Int32Array, ...} CSR風の隣接構造
+   */
+  function buildGraph(elements) {
+    const coord = new Map();          // osm node id -> [lat, lon]
+    const poiRaw = [];
+    for (const el of elements) {
+      if (el.type === 'node') {
+        coord.set(el.id, [el.lat, el.lon]);
+        const c = classifyPoi(el.tags);
+        if (c && (el.tags.name || c.cat === 'water' || c.cat === 'green')) poiRaw.push({ ...c, lat: el.lat, lon: el.lon, name: el.tags.name || el.tags['name:ja'] || c.label, tags: el.tags });
+      } else if ((el.type === 'way' || el.type === 'relation') && el.center) {
+        const c = classifyPoi(el.tags);
+        if (c) poiRaw.push({ ...c, lat: el.center.lat, lon: el.center.lon, name: (el.tags && (el.tags.name || el.tags['name:ja'])) || c.label, tags: el.tags || {} });
+      }
+    }
+
+    // way -> エッジ
+    const idx = new Map();            // osm id -> 連番
+    const lats = [], lons = [];
+    const edgesFrom = [], edgesTo = [], edgeLen = [], edgeKind = [];
+    const nodeOf = (osmId) => {
+      let i = idx.get(osmId);
+      if (i === undefined) {
+        const c = coord.get(osmId);
+        if (!c) return -1;
+        i = lats.length; idx.set(osmId, i); lats.push(c[0]); lons.push(c[1]);
+      }
+      return i;
+    };
+
+    for (const el of elements) {
+      if (el.type !== 'way' || !el.tags || !el.nodes) continue;
+      const hw = el.tags.highway;
+      if (!hw || !WALKABLE.has(hw)) continue;
+      if (el.tags.access === 'private' || el.tags.access === 'no') continue;
+      if (el.tags.foot === 'no') continue;
+      let kind = 0;                                  // 0=普通 1=静か 2=大通り 3=階段
+      if (hw === 'steps') kind = 3;
+      else if (QUIET_ROAD.has(hw)) kind = 1;
+      else if (BIG_ROAD.has(hw)) kind = 2;
+      const ns = el.nodes;
+      for (let k = 0; k + 1 < ns.length; k++) {
+        const a = nodeOf(ns[k]), b = nodeOf(ns[k + 1]);
+        if (a < 0 || b < 0 || a === b) continue;
+        const len = haversine(lats[a], lons[a], lats[b], lons[b]);
+        if (len <= 0 || len > 3000) continue;
+        edgesFrom.push(a); edgesTo.push(b); edgeLen.push(len); edgeKind.push(kind);
+      }
+    }
+
+    const n = lats.length, m = edgesFrom.length;
+    // CSR（双方向）
+    const deg = new Int32Array(n + 1);
+    for (let e = 0; e < m; e++) { deg[edgesFrom[e] + 1]++; deg[edgesTo[e] + 1]++; }
+    for (let i = 0; i < n; i++) deg[i + 1] += deg[i];
+    const head = deg.slice();
+    const adjTo = new Int32Array(m * 2), adjEdge = new Int32Array(m * 2);
+    const fill = deg.slice();
+    for (let e = 0; e < m; e++) {
+      const a = edgesFrom[e], b = edgesTo[e];
+      adjTo[fill[a]] = b; adjEdge[fill[a]++] = e;
+      adjTo[fill[b]] = a; adjEdge[fill[b]++] = e;
+    }
+
+    return {
+      n, m,
+      lat: Float64Array.from(lats), lon: Float64Array.from(lons),
+      head, adjTo, adjEdge,
+      edgeFrom: Int32Array.from(edgesFrom), edgeTo: Int32Array.from(edgesTo),
+      edgeLen: Float64Array.from(edgeLen), edgeKind: Int8Array.from(edgeKind),
+      pois: poiRaw,
+    };
+  }
+
+  // ------------------------------------------------- 空間インデックス&雰囲気
+  /** 100m格子のグリッド索引 */
+  function gridIndex(items, cell = 0.0012) {
+    const map = new Map();
+    items.forEach((p, i) => {
+      const k = `${Math.floor(p.lat / cell)},${Math.floor(p.lon / cell)}`;
+      let a = map.get(k); if (!a) map.set(k, a = []); a.push(i);
+    });
+    return {
+      cell, map,
+      near(lat, lon, radiusCells = 1) {
+        const gy = Math.floor(lat / cell), gx = Math.floor(lon / cell), out = [];
+        for (let dy = -radiusCells; dy <= radiusCells; dy++)
+          for (let dx = -radiusCells; dx <= radiusCells; dx++) {
+            const a = map.get(`${gy + dy},${gx + dx}`);
+            if (a) out.push(...a);
+          }
+        return out;
+      },
+    };
+  }
+
+  /**
+   * 各グラフノードに「自然度」「賑わい度」「名所度」を与える。
+   * → これがコース生成の“雰囲気”を決める中核。POIを通るかどうかではなく、
+   *   どんな道を選ぶかに効かせるのがポイント。
+   */
+  function scoreNodes(g, opts = {}) {
+    const RAD = opts.radius || 180;                 // POI影響半径(m)
+    const nature = new Float32Array(g.n);
+    const buzz = new Float32Array(g.n);
+    const sight = new Float32Array(g.n);
+    const gi = gridIndex(g.pois);
+    for (let i = 0; i < g.n; i++) {
+      const la = g.lat[i], lo = g.lon[i];
+      for (const pi of gi.near(la, lo, 2)) {
+        const p = g.pois[pi];
+        const d = haversine(la, lo, p.lat, p.lon);
+        if (d > RAD * 2) continue;
+        const w = Math.exp(-((d / RAD) ** 2));      // 距離減衰
+        if (p.nature) nature[i] += p.nature * w;
+        if (p.buzz) buzz[i] += p.buzz * w;
+        if (p.sight) sight[i] += p.sight * w;
+      }
+    }
+    // 0-1に正規化（上位を潰さないようsoftな上限）
+    const norm = (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = 1 - Math.exp(-arr[i] * 0.8); };
+    norm(nature); norm(buzz); norm(sight);
+    return { nature, buzz, sight };
+  }
+
+  /**
+   * ユーザーの要望 → エッジコスト関数
+   * pref.nature: -1(賑やか) .. +1(自然)   pref.sight: 0..1(名所を通りたい)
+   */
+  function makeCost(g, sc, pref) {
+    const wNature = Math.max(0, pref.nature), wBuzz = Math.max(0, -pref.nature);
+    const wSight = pref.sight || 0;
+    const cost = new Float64Array(g.m);
+    for (let e = 0; e < g.m; e++) {
+      const a = g.edgeFrom[e], b = g.edgeTo[e];
+      const nat = (sc.nature[a] + sc.nature[b]) / 2;
+      const bz = (sc.buzz[a] + sc.buzz[b]) / 2;
+      const si = (sc.sight[a] + sc.sight[b]) / 2;
+      let mul = 1;
+      mul -= 0.45 * wNature * nat;
+      mul -= 0.45 * wBuzz * bz;
+      mul -= 0.30 * wSight * si;
+      const k = g.edgeKind[e];
+      if (k === 2) mul += 0.35 * (0.5 + wNature);   // 大通りは走りにくい
+      if (k === 1) mul -= 0.10;                     // 歩専用路はうれしい
+      if (k === 3) mul += 2.0;                      // 階段は基本避ける
+      const c0 = g.edgeLen[e] * Math.max(0.35, mul);
+      cost[e] = isFinite(c0) && c0 > 0 ? c0 : Math.max(1, g.edgeLen[e]);   // 異常値でグラフを壊さない
+    }
+    return cost;
+  }
+
+  // ------------------------------------------------------------- Dijkstra
+  /**
+   * @param penal Float64Array|null  エッジ倍率（再通過ペナルティ）
+   * @returns {dist(コスト), real(実距離), prevNode, prevEdge}
+   */
+  function dijkstra(g, cost, src, penal, maxCost = Infinity) {
+    const dist = new Float64Array(g.n).fill(Infinity);
+    const real = new Float64Array(g.n).fill(Infinity);
+    const prevN = new Int32Array(g.n).fill(-1);
+    const prevE = new Int32Array(g.n).fill(-1);
+    const done = new Uint8Array(g.n);
+    const h = new Heap();
+    dist[src] = 0; real[src] = 0; h.push(0, src);
+    while (h.size) {
+      const [d, u] = h.pop();
+      if (done[u]) continue;
+      done[u] = 1;
+      if (d > maxCost) break;
+      for (let k = g.head[u]; k < g.head[u + 1]; k++) {
+        const v = g.adjTo[k], e = g.adjEdge[k];
+        const w = cost[e] * (penal ? penal[e] : 1);
+        const nd = d + w;
+        if (nd < dist[v]) {
+          dist[v] = nd; real[v] = real[u] + g.edgeLen[e];
+          prevN[v] = u; prevE[v] = e;
+          h.push(nd, v);
+        }
+      }
+    }
+    return { dist, real, prevN, prevE };
+  }
+
+  function tracePath(res, src, dst) {
+    if (!isFinite(res.dist[dst])) return null;
+    const nodes = [], edges = [];
+    let cur = dst;
+    while (cur !== src) {
+      const e = res.prevE[cur];
+      if (e < 0) return null;
+      nodes.push(cur); edges.push(e);
+      cur = res.prevN[cur];
+    }
+    nodes.push(src);
+    nodes.reverse(); edges.reverse();
+    return { nodes, edges, length: res.real[dst] };
+  }
+
+  /** ノードの格子索引（初回だけ構築してグラフに載せる） */
+  function nodeGrid(g) {
+    if (g._grid) return g._grid;
+    const cell = 0.0025;                        // 約250m
+    const map = new Map();
+    for (let i = 0; i < g.n; i++) {
+      const k = `${Math.floor(g.lat[i] / cell)},${Math.floor(g.lon[i] / cell)}`;
+      let a = map.get(k); if (!a) map.set(k, a = []); a.push(i);
+    }
+    return (g._grid = { cell, map });
+  }
+
+  /** 連結成分を求める（道路網は橋・私道・データ欠損で分断されていることがある） */
+  function components(g) {
+    if (g._comp) return g._comp;
+    const comp = new Int32Array(g.n).fill(-1);
+    const stack = new Int32Array(g.n);
+    const sizes = [];
+    let c = 0;
+    for (let s = 0; s < g.n; s++) {
+      if (comp[s] !== -1) continue;
+      let sp = 0, size = 0;
+      stack[sp++] = s; comp[s] = c;
+      while (sp) {
+        const u = stack[--sp]; size++;
+        for (let k = g.head[u]; k < g.head[u + 1]; k++) {
+          const v = g.adjTo[k];
+          if (comp[v] === -1) { comp[v] = c; stack[sp++] = v; }
+        }
+      }
+      sizes.push(size); c++;
+    }
+    let main = 0, mx = -1;
+    for (let i = 0; i < sizes.length; i++) if (sizes[i] > mx) { mx = sizes[i]; main = i; }
+    return (g._comp = { comp, sizes, main, mainSize: mx, count: sizes.length });
+  }
+
+  /**
+   * 最寄りのグラフノード。mainOnly=true なら「最大の連結道路網」の中から選ぶ。
+   * ※ 駅構内の孤立した歩路などにスナップしてしまうと、そこから一歩も動けなくなる。
+   */
+  function nearestNode(g, lat, lon, mainOnly) {
+    const gr = nodeGrid(g);
+    const cp = mainOnly ? components(g) : null;
+    const gy = Math.floor(lat / gr.cell), gx = Math.floor(lon / gr.cell);
+    let best = -1, bd = Infinity;
+    for (let ring = 0; ring <= 40; ring++) {
+      for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
+        if (ring > 0 && Math.max(Math.abs(dy), Math.abs(dx)) !== ring) continue;  // 外周のみ
+        const a = gr.map.get(`${gy + dy},${gx + dx}`);
+        if (!a) continue;
+        for (const i of a) {
+          if (cp && cp.comp[i] !== cp.main) continue;
+          const d = (g.lat[i] - lat) ** 2 + (g.lon[i] - lon) ** 2;
+          if (d < bd) { bd = d; best = i; }
+        }
+      }
+      if (best >= 0 && ring >= 1) break;        // 1リング余分に見てから確定
+    }
+    return best;
+  }
+
+  // ---------------------------------------------------------- コース生成本体
+  /**
+   * @param req {startLat,startLon,targetKm,nature(-1..1),sight(0..1),reward:'onsen'|'cafe'|...|null,count}
+   */
+  function generateCourses(g, req) {
+    const target = req.targetKm * 1000;
+    const sc = scoreNodes(g);
+    const cost = makeCost(g, sc, { nature: req.nature ?? 0.5, sight: req.sight ?? 0.5 });
+
+    const cp = components(g);
+    const start = nearestNode(g, req.startLat, req.startLon, true);
+    if (start < 0) return { error: 'no_graph' };
+
+    const out0 = dijkstra(g, cost, start, null, target * 1.4);
+    const reachable = [];
+    for (let i = 0; i < g.n; i++) if (isFinite(out0.real[i])) reachable.push(i);
+    if (reachable.length < 50) return {
+      error: 'graph_too_small', reachable: reachable.length,
+      mainSize: cp.mainSize, components: cp.count, nodes: g.n,
+    };
+
+    // --- ご褒美スポット候補（ゴール手前＝家の近くに置く）
+    let rewardCands = [];
+    if (req.reward) {
+      const wanted = new Set(req.reward === 'food' ? ['food', 'drink'] :
+        req.reward === 'onsen' ? ['onsen'] :
+          req.reward === 'cafe' ? ['cafe', 'sweets'] : [req.reward]);
+      const straightCap = Math.min(2000, target * 0.35);
+      for (const p of g.pois) {
+        if (!wanted.has(p.cat)) continue;
+        if (haversine(p.lat, p.lon, req.startLat, req.startLon) > straightCap) continue;  // 直線距離で粗く足切り
+        const nd = nearestNode(g, p.lat, p.lon, true);
+        const dr = out0.real[nd];
+        if (!isFinite(dr)) continue;
+        if (dr > Math.min(2000, target * 0.35)) continue;   // 帰り道に寄れる範囲
+        rewardCands.push({ poi: p, node: nd, distFromStart: dr });
+      }
+      rewardCands.sort((a, b) => a.distFromStart - b.distFromStart);
+      rewardCands = rewardCands.slice(0, 8);
+    }
+
+    // --- 折り返しアンカー候補：目標距離の 1/3 前後で、雰囲気スコアが高いノード
+    //     ※ 最短経路で結ぶと想定より短くなるので、1周目の実測から補正して2周目を回す
+    let center = target * 0.36, span = 0.30;
+    let best = null;
+    for (let pass = 0; pass < 2; pass++) {
+      const r = buildCandidates(center, span);
+      if (!best || r.results.length) best = r;
+      if (!r.results.length) break;
+      // 実測比 ρ = 総距離 / アンカー距離 → 次のパスでアンカー距離を目標に合わせる
+      const ratios = r.results.map((x) => x.total / x.anchorDist).sort((a, b) => a - b);
+      const rho = ratios[Math.floor(ratios.length / 2)];
+      const nextCenter = target / rho;
+      if (pass === 0 && isFinite(nextCenter) && nextCenter > 50) {
+        const bestErr = Math.min(...r.results.map((x) => x.err));
+        if (bestErr <= 0.05) break;                 // すでに十分な精度
+        center = nextCenter; span = 0.22;
+      } else break;
+    }
+    const results = best ? best.results : [];
+    const pickedCount = best ? best.pickedCount : 0;
+
+    function buildCandidates(centerDist, spanRatio) {
+      const rMin = Math.max(120, centerDist * (1 - spanRatio)), rMax = centerDist * (1 + spanRatio);
+      const multi = target > 6500;           // 長距離は折り返し点2つで“多角形”にする
+      const anchors = [];
+      for (const i of reachable) {
+        const d = out0.real[i];
+        if (d < rMin || d > rMax) continue;
+        const s = (req.nature >= 0 ? sc.nature[i] * req.nature : sc.buzz[i] * -req.nature)
+          + (req.sight ?? 0) * sc.sight[i];
+        anchors.push({ node: i, d, score: s, bear: bearing(req.startLat, req.startLon, g.lat[i], g.lon[i]) });
+      }
+      if (!anchors.length) return { results: [], pickedCount: 0 };
+      anchors.sort((a, b) => b.score - a.score);
+
+      // 方位で散らして多様性を確保
+      const picked = [];
+      for (const a of anchors) {
+        if (picked.length >= (multi ? 8 : 12)) break;
+        if (picked.some((p) => angDiff(p.bear, a.bear) < 35)) continue;
+        picked.push(a);
+      }
+      for (const a of anchors) {
+        if (picked.length >= (multi ? 8 : 12)) break;
+        if (!picked.includes(a)) picked.push(a);
+      }
+
+      const PEN = 6.0;                       // 同じ道を戻るときの倍率
+      const results = [];
+      let budget = req.budget || Math.max(20, Math.min(80, Math.round(1600000 / Math.max(1, g.n))));  // グラフが大きいほど探索回数を絞る
+      const mark = (pen, leg) => { for (const e of leg.edges) pen[e] = Math.max(pen[e], PEN); };
+
+      const secondAnchors = (a) => {
+        if (!multi) return [null];
+        const out = [];
+        for (const b of anchors) {
+          if (out.length >= 2) break;
+          const ad = angDiff(a.bear, b.bear);
+          if (ad < 55 || ad > 150) continue;
+          if (b.d < a.d * 0.6 || b.d > a.d * 1.3) continue;
+          if (out.some((o) => angDiff(o.bear, b.bear) < 30)) continue;
+          out.push(b);
+        }
+        return out.length ? out : [null];
+      };
+
+      const bestRewards = (res, k) => {
+        if (!rewardCands.length) return [null];
+        const scored = [];
+        for (const rc of rewardCands) {
+          const d = res.real[rc.node];
+          if (!isFinite(d)) continue;
+          scored.push({ rc, key: d + haversine(g.lat[rc.node], g.lon[rc.node], req.startLat, req.startLon) });
+        }
+        scored.sort((x, y) => x.key - y.key);
+        return scored.slice(0, k).map((x) => x.rc);
+      };
+
+      outer:
+      for (const anc of picked) {
+        const leg1 = tracePath(out0, start, anc.node);
+        if (!leg1) continue;
+        const penalA = new Float64Array(g.m).fill(1);
+        mark(penalA, leg1);
+
+        for (const b of secondAnchors(anc)) {
+          if (budget <= 0) break outer;
+          let legs = [leg1], total = leg1.length, cursor = anc.node;
+          let penal = penalA;
+          if (b) {
+            budget--;
+            const rB = dijkstra(g, cost, cursor, penal, target * 1.7);
+            const l2 = tracePath(rB, cursor, b.node);
+            if (!l2) continue;
+            penal = penal.slice(); mark(penal, l2);
+            legs = legs.concat([l2]); total += l2.length; cursor = b.node;
+          }
+
+          budget--;
+          const rC = dijkstra(g, cost, cursor, penal, target * 1.7);
+
+          for (const rc of bestRewards(rC, 2)) {
+            let legs2 = legs.slice(), tot = total, cur = cursor, pen = penal;
+            if (rc) {
+              const l = tracePath(rC, cur, rc.node);
+              if (!l) continue;
+              pen = penal.slice(); mark(pen, l);
+              legs2.push(l); tot += l.length; cur = rc.node;
+              if (budget <= 0) break outer;
+              budget--;
+              const rD = dijkstra(g, cost, cur, pen, target * 1.7);
+              const l3 = tracePath(rD, cur, start);
+              if (!l3) continue;
+              legs2.push(l3); tot += l3.length;
+            } else {
+              const l3 = tracePath(rC, cur, start);
+              if (!l3) continue;
+              legs2.push(l3); tot += l3.length;
+            }
+
+            const err = Math.abs(tot - target) / target;
+            if (err > 0.30) continue;
+
+            // 重複率
+            const seen = new Map();
+            let dup = 0;
+            for (const lg of legs2) for (const e of lg.edges) {
+              const c = (seen.get(e) || 0) + 1; seen.set(e, c);
+              if (c > 1) dup += g.edgeLen[e];
+            }
+            const overlap = dup / tot;
+
+            const nodes = [];
+            for (const lg of legs2) nodes.push(...lg.nodes);
+            const passed = collectPois(g, nodes, sc, req);
+            let quality = 0;
+            for (const nIdx of nodes) {
+              quality += (req.nature >= 0 ? sc.nature[nIdx] * req.nature : sc.buzz[nIdx] * -req.nature)
+                + (req.sight ?? 0) * sc.sight[nIdx];
+            }
+            quality /= nodes.length;
+
+            const score = quality * 1.0 - overlap * 1.2 - err * 6.0
+              + (rc ? 0.35 : 0) + Math.min(passed.highlights.length, 6) * 0.03;
+
+            results.push({
+              nodes, legs: legs2, total: tot, err, overlap, quality, score,
+              bearing: anc.bear, anchorDist: anc.d,
+              reward: rc ? rc.poi : null,
+              anchorNode: anc.node,
+              highlights: passed.highlights,
+              mix: passed.mix,
+              coords: nodes.map((i) => [g.lat[i], g.lon[i]]),
+            });
+          }
+        }
+        if (results.filter((r) => r.err <= 0.08).length >= 8) break;
+      }
+      return { results, pickedCount: picked.length };
+    }
+
+    if (!results.length) return { error: 'no_route' };
+    results.sort((a, b) => b.score - a.score);
+
+    // 距離が合わないものは出さない（±15%以内を厳守。無ければ±25%まで緩める）
+    let pool = results.filter((r) => r.err <= 0.15);
+    if (!pool.length) pool = results.filter((r) => r.err <= 0.25);
+    if (!pool.length) return { error: 'distance_unreachable', closest: (results[0].total / 1000).toFixed(2) };
+
+    // 方位＋経路の重なりで散らして上位を返す（似たコースを3本並べない）
+    const want = req.count || 3;
+    const edgeSetOf = (r) => { const s2 = new Set(); for (const lg of r.legs) for (const e of lg.edges) s2.add(e); return s2; };
+    const jaccard = (A, B) => { let inter = 0; for (const e of A) if (B.has(e)) inter++; return inter / (A.size + B.size - inter); };
+    const final = [];
+    const sets = [];
+    const tryAdd = (r, bearGate, simGate) => {
+      if (final.length >= want) return;
+      if (final.includes(r)) return;
+      if (final.some((f) => angDiff(f.bearing, r.bearing) < bearGate)) return;
+      const es = edgeSetOf(r);
+      if (sets.some((s2) => jaccard(es, s2) > simGate)) return;
+      final.push(r); sets.push(es);
+    };
+    for (const r of pool) tryAdd(r, 40, 0.5);
+    for (const r of pool) tryAdd(r, 0, 0.6);
+    for (const r of pool) tryAdd(r, 0, 0.75);   // それでも埋まらなければ本数を減らす
+    return { courses: final, stats: { nodes: g.n, edges: g.m, pois: g.pois.length, anchors: pickedCount, candidates: results.length, mainSize: cp.mainSize, components: cp.count } };
+  }
+
+  /** ルート沿い120m以内のPOIを拾って見どころリストにする */
+  function collectPois(g, nodeSeq, sc, req) {
+    const gi = gridIndex(g.pois);
+    const found = new Map();
+    const step = Math.max(1, Math.floor(nodeSeq.length / 300));
+    for (let k = 0; k < nodeSeq.length; k += step) {
+      const i = nodeSeq[k];
+      for (const pi of gi.near(g.lat[i], g.lon[i], 1)) {
+        const p = g.pois[pi];
+        const d = haversine(g.lat[i], g.lon[i], p.lat, p.lon);
+        if (d > 120) continue;
+        const prev = found.get(pi);
+        if (!prev || prev.dist > d) found.set(pi, { poi: p, dist: d, at: k / nodeSeq.length });
+      }
+    }
+    const all = [...found.values()];
+    const mix = { nature: 0, buzz: 0, sight: 0 };
+    for (const f of all) {
+      if (f.poi.nature) mix.nature++;
+      if (f.poi.buzz) mix.buzz++;
+      if (f.poi.sight) mix.sight++;
+    }
+    const wantBuzz = req && (req.nature ?? 0) < 0;
+    const hl = (p) => (p.sight || 0) * 1.2 + (wantBuzz ? (p.buzz || 0) : (p.nature || 0));
+    const highlights = all
+      .filter((f) => hl(f.poi) > 0 && f.poi.name && !f.poi.reward)
+      .sort((a, b) => hl(b.poi) - hl(a.poi))
+      .slice(0, 8)
+      .sort((a, b) => a.at - b.at);
+    return { highlights, mix, all };
+  }
+
+  const API = {
+    haversine, bearing, buildGraph, scoreNodes, makeCost, dijkstra,
+    tracePath, nearestNode, generateCourses, classifyPoi, WALKABLE, components,
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+  else root.RC = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+<script>
+/* ===========================================================================
+ *  最小限のQRコード生成器（バイトモード / 誤り訂正レベルL / 型番1〜9）
+ *  ---------------------------------------------------------------------
+ *  外部ライブラリを使わずにQRを出すために自前実装している。
+ *  用途は「GoogleマップのURLをスマホに渡す」ことだけなので、
+ *  必要十分な範囲（最大232バイト）に絞ってある。
+ *
+ *  QR.encode(text) -> { size, modules }   modules[y][x] = true(黒)/false(白)
+ * =========================================================================*/
+(function (root) {
+  'use strict';
+
+  // 型番ごとの: [1ブロックあたりのデータ語数, ブロック数, 1ブロックあたりのEC語数]
+  // （レベルLのみ。1〜5は1ブロック、6〜9は2ブロック）
+  const EC_L = {
+    1: [19, 1, 7], 2: [34, 1, 10], 3: [55, 1, 15], 4: [80, 1, 20], 5: [108, 1, 26],
+    6: [68, 2, 18], 7: [78, 2, 20], 8: [97, 2, 24], 9: [116, 2, 30],
+  };
+  // 型番ごとの位置合わせパターンの中心座標
+  const ALIGN = {
+    1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30],
+    6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46],
+  };
+  // 型番ごとの余りビット数
+  const REMAINDER = { 1: 0, 2: 7, 3: 7, 4: 7, 5: 7, 6: 7, 7: 0, 8: 0, 9: 0 };
+
+  const capacityBytes = (v) => {
+    const [dataPerBlock, blocks] = EC_L[v];
+    return dataPerBlock * blocks - 2 - (v >= 10 ? 1 : 0); // モード4bit + 文字数8bit = 2バイト分
+  };
+
+  // ------------------------------------------------------------ GF(256)
+  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+  (function initGF() {
+    let x = 1;
+    for (let i = 0; i < 255; i++) {
+      EXP[i] = x; LOG[x] = i;
+      x <<= 1;
+      if (x & 0x100) x ^= 0x11d;
+    }
+    for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  })();
+  const gfMul = (a, b) => (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]];
+
+  /** 誤り訂正用の生成多項式 */
+  function rsGenerator(degree) {
+    let poly = [1];
+    for (let i = 0; i < degree; i++) {
+      const next = new Array(poly.length + 1).fill(0);
+      for (let j = 0; j < poly.length; j++) {
+        next[j] ^= poly[j];
+        next[j + 1] ^= gfMul(poly[j], EXP[i]);
+      }
+      poly = next;
+    }
+    return poly;
+  }
+
+  /** データ語列からEC語列を作る */
+  function rsEncode(data, ecLen) {
+    const gen = rsGenerator(ecLen);
+    const res = new Array(ecLen).fill(0);
+    for (const byte of data) {
+      const factor = byte ^ res[0];
+      res.shift(); res.push(0);
+      for (let i = 0; i < ecLen; i++) res[i] ^= gfMul(gen[i + 1], factor);
+    }
+    return res;
+  }
+
+  // -------------------------------------------------- 情報ビット（BCH）
+  function bchFormat(bits) {           // 5bit -> 15bit
+    let d = bits << 10;
+    for (let i = 14; i >= 10; i--) if ((d >> i) & 1) d ^= 0x537 << (i - 10);
+    return ((bits << 10) | d) ^ 0x5412;
+  }
+  function bchVersion(version) {       // 6bit -> 18bit
+    let d = version << 12;
+    for (let i = 17; i >= 12; i--) if ((d >> i) & 1) d ^= 0x1f25 << (i - 12);
+    return (version << 12) | d;
+  }
+
+  // ------------------------------------------------------------ 本体
+  function encode(text, opts = {}) {
+    const bytes = toUtf8(text);
+    let version = opts.version || 0;
+    if (!version) {
+      for (let v = 1; v <= 9; v++) if (bytes.length <= capacityBytes(v)) { version = v; break; }
+    }
+    if (!version) throw new Error(`データが長すぎます（${bytes.length}バイト、上限${capacityBytes(9)}）`);
+
+    const [dataPerBlock, blocks, ecPerBlock] = EC_L[version];
+    const totalData = dataPerBlock * blocks;
+
+    // --- ビット列を作る：モード指示子(0100) + 文字数(8bit) + 本体 + 終端
+    const bits = [];
+    const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+    push(0b0100, 4);
+    push(bytes.length, 8);
+    for (const b of bytes) push(b, 8);
+    for (let i = 0; i < 4 && bits.length < totalData * 8; i++) bits.push(0);
+    while (bits.length % 8) bits.push(0);
+    const dataCodewords = [];
+    for (let i = 0; i < bits.length; i += 8) {
+      let b = 0; for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+      dataCodewords.push(b);
+    }
+    const PAD = [0xec, 0x11];
+    for (let i = 0; dataCodewords.length < totalData; i++) dataCodewords.push(PAD[i % 2]);
+
+    // --- ブロック分割 → EC計算 → インターリーブ
+    const dataBlocks = [], ecBlocks = [];
+    for (let b = 0; b < blocks; b++) {
+      const blk = dataCodewords.slice(b * dataPerBlock, (b + 1) * dataPerBlock);
+      dataBlocks.push(blk);
+      ecBlocks.push(rsEncode(blk, ecPerBlock));
+    }
+    const final = [];
+    for (let i = 0; i < dataPerBlock; i++) for (const blk of dataBlocks) final.push(blk[i]);
+    for (let i = 0; i < ecPerBlock; i++) for (const blk of ecBlocks) final.push(blk[i]);
+
+    // --- 行列を組む
+    const size = version * 4 + 17;
+    const m = Array.from({ length: size }, () => new Array(size).fill(null));   // null=未確定
+    const fixed = Array.from({ length: size }, () => new Array(size).fill(false));
+    const set = (y, x, v) => { m[y][x] = v; fixed[y][x] = true; };
+
+    // 位置検出パターン + 分離帯
+    const finder = (fy, fx) => {
+      for (let dy = -1; dy <= 7; dy++) for (let dx = -1; dx <= 7; dx++) {
+        const y = fy + dy, x = fx + dx;
+        if (y < 0 || x < 0 || y >= size || x >= size) continue;
+        const inRing = (dy >= 0 && dy <= 6 && dx >= 0 && dx <= 6) &&
+          (dy === 0 || dy === 6 || dx === 0 || dx === 6 || (dy >= 2 && dy <= 4 && dx >= 2 && dx <= 4));
+        set(y, x, inRing);
+      }
+    };
+    finder(0, 0); finder(0, size - 7); finder(size - 7, 0);
+
+    // タイミングパターン
+    for (let i = 8; i < size - 8; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+
+    // 位置合わせパターン
+    const centers = ALIGN[version];
+    for (const cy of centers) for (const cx of centers) {
+      if ((cy <= 8 && cx <= 8) || (cy <= 8 && cx >= size - 9) || (cy >= size - 9 && cx <= 8)) continue;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
+        set(cy + dy, cx + dx, Math.max(Math.abs(dy), Math.abs(dx)) !== 1);
+    }
+
+    // 形式情報の領域を予約（値は後で入れる）＋ 常に黒のモジュール
+    const reserveFormat = () => {
+      for (let i = 0; i <= 8; i++) { if (!fixed[8][i]) set(8, i, false); if (!fixed[i][8]) set(i, 8, false); }
+      for (let i = 0; i < 8; i++) { if (!fixed[8][size - 1 - i]) set(8, size - 1 - i, false); if (!fixed[size - 1 - i][8]) set(size - 1 - i, 8, false); }
+      set(size - 8, 8, true);   // 常に黒
+    };
+    reserveFormat();
+
+    // 型番情報（型番7以上）
+    if (version >= 7) {
+      const vb = bchVersion(version);
+      for (let i = 0; i < 18; i++) {
+        const bit = ((vb >> i) & 1) === 1;
+        const a = Math.floor(i / 3), b = i % 3;
+        set(size - 11 + b, a, bit);
+        set(a, size - 11 + b, bit);
+      }
+    }
+
+    // --- データを配置（右下からジグザグ）
+    let bitIdx = 0;
+    const allBits = [];
+    for (const cw of final) for (let i = 7; i >= 0; i--) allBits.push((cw >> i) & 1);
+    for (let i = 0; i < REMAINDER[version]; i++) allBits.push(0);
+
+    let upward = true;
+    for (let right = size - 1; right > 0; right -= 2) {
+      if (right === 6) right = 5;                       // 縦のタイミング列は飛ばす
+      for (let i = 0; i < size; i++) {
+        const y = upward ? size - 1 - i : i;
+        for (const x of [right, right - 1]) {
+          if (fixed[y][x]) continue;
+          m[y][x] = bitIdx < allBits.length ? allBits[bitIdx] === 1 : false;
+          bitIdx++;
+        }
+      }
+      upward = !upward;
+    }
+
+    // --- マスク選択
+    const MASKS = [
+      (y, x) => (y + x) % 2 === 0,
+      (y) => y % 2 === 0,
+      (y, x) => x % 3 === 0,
+      (y, x) => (y + x) % 3 === 0,
+      (y, x) => (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0,
+      (y, x) => ((y * x) % 2) + ((y * x) % 3) === 0,
+      (y, x) => (((y * x) % 2) + ((y * x) % 3)) % 2 === 0,
+      (y, x) => (((y + x) % 2) + ((y * x) % 3)) % 2 === 0,
+    ];
+    let best = null;
+    for (let mask = 0; mask < 8; mask++) {
+      const cand = m.map((row) => row.slice());
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++)
+        if (!fixed[y][x] && MASKS[mask](y, x)) cand[y][x] = !cand[y][x];
+      writeFormat(cand, size, mask);
+      const score = penalty(cand, size);
+      if (!best || score < best.score) best = { score, modules: cand, mask };
+    }
+    return { size, modules: best.modules, version, mask: best.mask };
+  }
+
+  function writeFormat(mat, size, mask) {
+    const bitsVal = bchFormat((0b01 << 3) | mask);   // レベルL = 01
+    for (let i = 0; i < 15; i++) {
+      const bit = ((bitsVal >> i) & 1) === 1;
+      // 1つ目の複製：左上の縦列（タイミングパターンの行6は飛ばす）
+      if (i < 6) mat[i][8] = bit;
+      else if (i < 8) mat[i + 1][8] = bit;
+      else mat[size - 15 + i][8] = bit;
+      // 2つ目の複製：右上の横行 → 左下へ折り返す（列6は飛ばす）
+      if (i < 8) mat[8][size - 1 - i] = bit;
+      else if (i === 8) mat[8][7] = bit;
+      else mat[8][14 - i] = bit;
+    }
+    mat[size - 8][8] = true;   // 常に黒のモジュール
+  }
+
+  /** 読み取りやすさの評価（小さいほど良い） */
+  function penalty(mat, size) {
+    let score = 0;
+    // 規則1：同色の連続
+    for (let i = 0; i < size; i++) {
+      for (const line of [mat[i], mat.map((r) => r[i])]) {
+        let run = 1;
+        for (let j = 1; j < size; j++) {
+          if (line[j] === line[j - 1]) run++;
+          else { if (run >= 5) score += 3 + (run - 5); run = 1; }
+        }
+        if (run >= 5) score += 3 + (run - 5);
+      }
+    }
+    // 規則2：2x2の同色ブロック
+    for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++)
+      if (mat[y][x] === mat[y][x + 1] && mat[y][x] === mat[y + 1][x] && mat[y][x] === mat[y + 1][x + 1]) score += 3;
+    // 規則3：位置検出パターンに似た並び
+    const P1 = [true, false, true, true, true, false, true, false, false, false, false];
+    const P2 = [false, false, false, false, true, false, true, true, true, false, true];
+    const match = (line, i, pat) => pat.every((v, k) => line[i + k] === v);
+    for (let i = 0; i < size; i++) {
+      for (const line of [mat[i], mat.map((r) => r[i])]) {
+        for (let j = 0; j + 11 <= size; j++) if (match(line, j, P1) || match(line, j, P2)) score += 40;
+      }
+    }
+    // 規則4：白黒の偏り
+    let dark = 0;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (mat[y][x]) dark++;
+    score += Math.floor(Math.abs((dark * 100) / (size * size) - 50) / 5) * 10;
+    return score;
+  }
+
+  function toUtf8(str) {
+    const out = [];
+    for (const ch of str) {
+      let c = ch.codePointAt(0);
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+      else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+      else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    }
+    return out;
+  }
+
+  /** 白枠つきのSVG文字列にする */
+  function toSvg(qr, opts = {}) {
+    const cell = opts.cell || 4, quiet = opts.quiet == null ? 4 : opts.quiet;
+    const dim = (qr.size + quiet * 2) * cell;
+    let path = '';
+    for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++)
+      if (qr.modules[y][x]) path += `M${(x + quiet) * cell} ${(y + quiet) * cell}h${cell}v${cell}h-${cell}z`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dim} ${dim}" width="${dim}" height="${dim}" shape-rendering="crispEdges">` +
+      `<rect width="${dim}" height="${dim}" fill="#fff"/><path d="${path}" fill="#000"/></svg>`;
+  }
+
+  const API = { encode, toSvg, capacityBytes, bchFormat, bchVersion };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+  else root.QR = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+<script>
+(function(){
+'use strict';
+const $ = (id)=>document.getElementById(id);
+const COLORS = ['#d3573a','#4f8fd6','#5fa06e'];
+const BAR = {nature:'#57b06b', buzz:'#e0607a', sight:'#e8c25f'};
+
+// ---------------- 地図 ----------------
+const map = L.map('map',{zoomControl:true}).setView([35.7118,139.7770],14);
+const TILES = {
+  pale:  ['https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png','地理院タイル',18],
+  photo: ['https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg','地理院タイル（写真）',18],
+  osm:   ['https://tile.openstreetmap.org/{z}/{x}/{y}.png','&copy; OpenStreetMap contributors',19],
+};
+let tileLayer = null;
+function setTiles(kind){
+  const [url,attr,maxZoom] = TILES[kind] || TILES.pale;
+  if(tileLayer) map.removeLayer(tileLayer);
+  tileLayer = L.tileLayer(url,{attribution:attr+' | データ &copy; OpenStreetMap contributors',maxZoom}).addTo(map);
+  [...$('tiles').children].forEach(b=>b.classList.toggle('on', b.dataset.t===kind));
+}
+setTiles('pale');
+$('tiles').onclick=(e)=>{ const t=e.target.dataset.t; if(t) setTiles(t); };
+const routeLayer = L.layerGroup().addTo(map);
+let startMarker = null;
+
+const PRESETS = [
+  ['上野',35.7141,139.7774],['蔵前',35.7057,139.7912],['皇居',35.6852,139.7528],
+  ['代々木公園',35.6716,139.6949],['二子玉川',35.6117,139.6266],['清澄白河',35.6822,139.7996],
+  ['中目黒',35.6446,139.6993],['光が丘',35.7614,139.6296]
+];
+let state = { lat:35.7141, lon:139.7774, name:'上野', reward:'onsen', courses:[], sel:0 };
+
+$('presets').innerHTML = PRESETS.map((p,i)=>`<button data-i="${i}">${p[0]}</button>`).join('');
+$('presets').onclick = (e)=>{ const i=e.target.dataset.i; if(i==null) return; setStart(PRESETS[i][1],PRESETS[i][2],PRESETS[i][0]); };
+
+const REWARDS = [['onsen','♨ 銭湯・サウナ'],['cafe','☕ カフェ・甘味'],['food','🍜 ご飯'],['drink','🍺 一杯'],['','なし']];
+$('rewards').innerHTML = REWARDS.map(r=>`<button data-r="${r[0]}" class="${r[0]===state.reward?'on':''}">${r[1]}</button>`).join('');
+$('rewards').onclick=(e)=>{ const r=e.target.dataset.r; if(r==null) return; state.reward=r;
+  [...$('rewards').children].forEach(b=>b.classList.toggle('on',b.dataset.r===r)); };
+
+function setStart(lat,lon,name){
+  state.lat=lat; state.lon=lon; state.name=name||`${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+  $('ptxt').textContent=state.name;
+  if(startMarker) map.removeLayer(startMarker);
+  startMarker = L.circleMarker([lat,lon],{radius:9,color:'#f0e6d2',weight:3,fillColor:'#e8c25f',fillOpacity:1}).addTo(map).bindTooltip('スタート/ゴール');
+  map.setView([lat,lon], map.getZoom()<13?14:map.getZoom());
+}
+setStart(state.lat,state.lon,state.name);
+map.on('click',(e)=>setStart(e.latlng.lat,e.latlng.lng,null));
+
+// ---------------- スライダー表示 ----------------
+const natLabel=(v)=> v<=-0.75?'賑やか重視':v<=-0.25?'やや賑やか':v<0.25?'こだわらない':v<0.75?'自然多め':'自然重視';
+const sgtLabel=(v)=> v<0.25?'気にしない':v<0.6?'ふつう':v<0.9?'寄りたい':'できるだけ通る';
+$('dist').oninput=()=>$('dkm').textContent=(+$('dist').value).toFixed(1)+' km';
+$('nat').oninput=()=>$('natv').textContent=natLabel(+$('nat').value);
+$('sgt').oninput=()=>$('sgtv').textContent=sgtLabel(+$('sgt').value);
+
+// ---------------- 住所検索 ----------------
+$('find').onclick = async ()=>{
+  const q=$('addr').value.trim(); if(!q) return;
+  log('検索中…');
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=jp&q=${encodeURIComponent(q)}`,{headers:{'Accept-Language':'ja'}});
+    const j=await r.json();
+    if(!j.length){ log('見つかりませんでした。地図をクリックしても起点を指定できます。'); return; }
+    setStart(+j[0].lat,+j[0].lon,q); log('起点を「'+q+'」にしました。');
+  }catch(err){ log('検索に失敗しました（オフライン？）: '+err.message); }
+};
+
+// ---------------- 現在地 ----------------
+$('here').onclick = ()=>{
+  if(!navigator.geolocation){ log('この端末では現在地を取得できません。'); return; }
+  if(!window.isSecureContext){
+    log('現在地はhttpsで開いたときだけ使えます（ファイルを直接開いた場合は使えません）。','err');
+    log('地図をタップするか、住所検索で起点を指定してください。');
+    return;
+  }
+  $('here').disabled=true; $('here').textContent='📍 取得中…';
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      setStart(pos.coords.latitude, pos.coords.longitude, '現在地');
+      log(`現在地を起点にしました（誤差±${Math.round(pos.coords.accuracy)}m）`);
+      $('here').disabled=false; $('here').textContent='📍 現在地から走る';
+    },
+    (err)=>{
+      log('現在地を取得できませんでした: '+err.message,'err');
+      if(location.protocol==='file:')
+        log('ファイルを直接開いた状態では現在地が使えないことがあります。httpsで開くか、地図をタップして起点を指定してください。');
+      else
+        log('ブラウザの位置情報の許可を確認するか、地図をタップして起点を指定してください。');
+      $('here').disabled=false; $('here').textContent='📍 現在地から走る';
+    },
+    { enableHighAccuracy:true, timeout:10000, maximumAge:60000 }
+  );
+};
+
+// ---------------- Overpass ----------------
+const OVERPASS = [
+  ['z.overpass-api.de','https://z.overpass-api.de/api/interpreter'],
+  ['lz4.overpass-api.de','https://lz4.overpass-api.de/api/interpreter'],
+  ['overpass-api.de','https://overpass-api.de/api/interpreter'],
+  ['kumi.systems','https://overpass.kumi.systems/api/interpreter'],
+  ['private.coffee','https://overpass.private.coffee/api/interpreter'],
+  ['VK maps','https://maps.mail.ru/osm/tools/overpass/api/interpreter'],
+];
+const MIN_ELEMENTS = 200;
+let lastGood = null;
+const cache = [];
+
+const ROADS = {
+  full:   'footway|path|pedestrian|steps|living_street|residential|unclassified|tertiary|tertiary_link|secondary|secondary_link|primary|primary_link|cycleway|track|service|road',
+  mid:    'footway|path|pedestrian|living_street|residential|unclassified|tertiary|tertiary_link|secondary|secondary_link|primary|primary_link|cycleway|road',
+  coarse: 'pedestrian|living_street|residential|unclassified|tertiary|tertiary_link|secondary|secondary_link|primary|primary_link',
+};
+
+function radiusFor(km){ return Math.min(7000, Math.max(1200, km*1000*0.55)); }
+function bboxOf(lat,lon,radius){
+  const dLat=radius/111320, dLon=radius/(111320*Math.cos(lat*Math.PI/180));
+  return [lat-dLat,lon-dLon,lat+dLat,lon+dLon].map(v=>v.toFixed(5)).join(',');
+}
+
+function poiFilters(reward, nature){
+  const f = [
+    'node["leisure"~"^(park|garden)$"]',
+    'node["natural"~"^(water|beach|wood)$"]',
+    'node["tourism"~"^(viewpoint|attraction|artwork)$"]',
+    'node["historic"]',
+    'node["amenity"="place_of_worship"]',
+    'node["railway"="station"]',
+    'way["leisure"~"^(park|garden)$"]',
+    'way["natural"~"^(water|wood)$"]',
+    'way["landuse"~"^(forest|grass)$"]',
+    'way["waterway"="riverbank"]',
+    'way["amenity"="place_of_worship"]',
+  ];
+  const rewardFilters = {
+    onsen: ['node["amenity"="public_bath"]','node["leisure"="sauna"]','way["amenity"="public_bath"]'],
+    cafe:  ['node["amenity"~"^(cafe|ice_cream)$"]','node["shop"~"^(bakery|confectionery)$"]'],
+    food:  ['node["amenity"~"^(restaurant|fast_food)$"]'],
+    drink: ['node["amenity"~"^(bar|pub)$"]'],
+  };
+  if(reward && rewardFilters[reward]) f.push(...rewardFilters[reward]);
+  if(nature < 0.25 && reward !== 'cafe' && reward !== 'food')
+    f.push('node["amenity"~"^(cafe|restaurant)$"]');
+  return f;
+}
+
+function buildQuery(lat, lon, radius, reward, nature){
+  const outer = bboxOf(lat,lon,radius);
+  const mid   = bboxOf(lat,lon,Math.min(radius,4500));
+  const inner = bboxOf(lat,lon,Math.min(radius,2600));
+  const parts = [
+    `way["highway"~"^(${ROADS.full})$"]["area"!="yes"](${inner});`,
+    radius > 2600 ? `way["highway"~"^(${ROADS.mid})$"]["area"!="yes"](${mid});` : '',
+    radius > 4500 ? `way["highway"~"^(${ROADS.coarse})$"]["area"!="yes"](${outer});` : '',
+    ...poiFilters(reward, nature).map(f => `${f}(${outer});`),
+  ].filter(Boolean);
+  return `[out:json][timeout:300];\n(\n  ${parts.join('\n  ')}\n);\nout body center qt;\n>;\nout skel qt;`;
+}
+
+async function askOverpass(url, q, timeoutMs){
+  const attempts = [
+    ()=>fetch(url+'?data='+encodeURIComponent(q), {method:'GET', mode:'cors', credentials:'omit'}),
+    ()=>fetch(url, {method:'POST', mode:'cors', credentials:'omit',
+      body:'data='+encodeURIComponent(q), headers:{'Content-Type':'application/x-www-form-urlencoded'}}),
+  ];
+  let lastErr;
+  for(const go of attempts){
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), timeoutMs||300000);
+    try{
+      const res = await Promise.race([go(), new Promise((_,rej)=>ctrl.signal.addEventListener('abort',()=>rej(new Error('時間切れ'))))]);
+      clearTimeout(timer);
+      if(!res.ok){
+        const hint = res.status===429?'（混雑中。1〜2分待つと通ります）':res.status===504?'（サーバー側が時間切れ。距離を短くしてください）':'';
+        throw new Error('HTTP '+res.status+hint);
+      }
+      return await res.json();
+    }catch(e){ clearTimeout(timer); lastErr=e; }
+  }
+  throw lastErr;
+}
+
+async function fetchOsmApi(bbox){
+  const [s1,w,n,e] = bbox.split(',').map(Number);
+  const url = `https://api.openstreetmap.org/api/0.6/map.json?bbox=${w},${s1},${e},${n}`;
+  const res = await fetch(url, {mode:'cors', credentials:'omit'});
+  if(!res.ok){
+    const t = await res.text().catch(()=>'');
+    throw new Error('HTTP '+res.status+(/too many nodes|bbox/i.test(t)?'（範囲が広すぎます。距離を短くしてください）':''));
+  }
+  const j = await res.json();
+  return j.elements;
+}
+
+async function getData(lat, lon, radius, reward, nature){
+  const key = poiFilters(reward, nature).join('|');
+  const hit = cache.find(c => c.key === key && c.radius >= radius - 50
+    && RC.haversine(c.lat, c.lon, lat, lon) < 150);
+  if(hit){ log(`✓ 取得済みのデータを再利用（半径${(hit.radius/1000).toFixed(1)}km・通信なし）`); return hit.els; }
+
+  const fetchRadius = Math.min(7500, Math.ceil(radius * 1.2 / 250) * 250);
+  const area = (2*fetchRadius/1000) ** 2;
+  log(`半径${(fetchRadius/1000).toFixed(1)}km（約${Math.round(area)}km²）を取得します`);
+  log(`目安 ${estimate(area)}。次回から同じ起点なら通信なしで作れます。`);
+  await sleep(30);
+
+  const q = buildQuery(lat, lon, fetchRadius, reward, nature);
+  const bbox = bboxOf(lat, lon, fetchRadius);
+  let sawNet = 0;
+  const order = lastGood ? [lastGood, ...OVERPASS.filter(m=>m[1]!==lastGood[1])] : OVERPASS;
+  for(const [name,url] of order){
+    try{
+      const t0=performance.now();
+      log(`取得中… ${name}`);
+      const j = await askOverpass(url, q);
+      const els = j.elements||[];
+      if(els.length < MIN_ELEMENTS){
+        log(`  △ ${name}: ${els.length}件しか返りませんでした（この地域のデータを持たないミラーの可能性）`);
+        continue;
+      }
+      log(`✓ 取得成功 ${(els.length/1000).toFixed(1)}k要素 / ${((performance.now()-t0)/1000).toFixed(0)}秒（${name}）`);
+      cache.push({lat, lon, radius: fetchRadius, key, els});
+      lastGood=[name,url];
+      return els;
+    }catch(e){
+      const msg = String(e.message||e);
+      if(/Failed to fetch|NetworkError|load failed/i.test(msg)) sawNet++;
+      log(`  × ${name}: ${msg}`);
+    }
+  }
+  try{
+    log('Overpassが全滅したので OSM本家API を試します…');
+    const els = await fetchOsmApi(bbox);
+    if(els.length >= MIN_ELEMENTS){
+      log(`✓ 取得成功 ${(els.length/1000).toFixed(1)}k要素（api.openstreetmap.org）`);
+      cache.push({lat, lon, radius: fetchRadius, key, els});
+      return els;
+    }
+    log(`  △ api.openstreetmap.org: ${els.length}件`);
+  }catch(e){ log(`  × api.openstreetmap.org: ${e.message||e}`); }
+
+  throw new Error(sawNet>=3 ? 'BLOCKED' : 'NODATA');
+}
+
+function estimate(areaKm2){
+  const sec = Math.round(areaKm2 * 2);
+  if(sec < 45) return '20〜40秒';
+  if(sec < 120) return '1分前後';
+  return `${Math.round(sec/60)}〜${Math.round(sec/60)+2}分`;
+}
+
+// ---------------- 実行 ----------------
+function log(msg,cls){ $('log').innerHTML += (cls?`<span class="${cls}">${msg}</span>`:msg)+'\n'; $('log').scrollTop=1e9; }
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+
+$('go').onclick = async ()=>{
+  const km=+$('dist').value;
+  $('go').disabled=true; $('log').innerHTML=''; $('cards').innerHTML=''; routeLayer.clearLayers();
+  try{
+    let els;
+    if(state.localElements){
+      log(`読み込み済みファイルのデータを使います（${(state.localElements.length/1000).toFixed(1)}k要素）`);
+      els = state.localElements;
+    }else{
+      els = await getData(state.lat, state.lon, radiusFor(km), state.reward||null, +$('nat').value);
+    }
+    log('歩行ネットワークを構築中…'); await sleep(30);
+    const t1=performance.now();
+    const g = RC.buildGraph(els);
+    const cp = RC.components(g);
+    log(`交差点 ${g.n.toLocaleString()} / 区間 ${g.m.toLocaleString()} / スポット ${g.pois.length.toLocaleString()}  (${((performance.now()-t1)/1000).toFixed(1)}秒)`);
+    log(`つながった道路網: ${cp.mainSize.toLocaleString()}交差点（分断された断片 ${cp.count-1}個は除外）`);
+    if(g.n<200){ log('この場所は道路データが少なすぎます。別の起点を試してください。','err'); $('go').disabled=false; return; }
+    log('コースを探索中…'); await sleep(30);
+    const t2=performance.now();
+    const res = RC.generateCourses(g,{
+      startLat:state.lat, startLon:state.lon, targetKm:km,
+      nature:+$('nat').value, sight:+$('sgt').value,
+      reward: state.reward||null, count:3
+    });
+    const sec=((performance.now()-t2)/1000).toFixed(1);
+    if(res.error){
+      const msgs={no_anchor:'折り返し地点が見つかりませんでした。距離を変えてみてください。',
+        no_route:'条件に合う周回コースが作れませんでした。',
+        distance_unreachable:`指定距離のコースが作れませんでした（最も近いもので約${res.closest}km）。道が少ない地域か、起点が行き止まりの近くかもしれません。起点を少し動かすか、距離を変えてみてください。`,
+        graph_too_small:`起点から走り出せる道が見つかりませんでした（到達 ${res.reachable} / 最大の道路網 ${res.mainSize}）。起点を道路の上に置き直してみてください。`};
+      log('× '+(msgs[res.error]||res.error),'err'); $('go').disabled=false; return;
+    }
+    log(`${res.courses.length}本のコースを生成（候補${res.stats.candidates}本から / ${sec}秒）`);
+    state.courses=res.courses; state.sel=0; render();
+  }catch(e){
+    if(e.message==='BLOCKED'||e.message==='NODATA') showBlockedHelp(e.message);
+    else { log('エラー: '+e.message,'err'); }
+    console.error(e);
+  }
+  $('go').disabled=false;
+};
+
+function showBlockedHelp(kind){
+  log('');
+  if(kind==='NODATA'){
+    log('× どのサーバーからもこの地域のデータを取得できませんでした。','err');
+  }else{
+    log('× 多くのサーバーへの通信がブロックされています。','err');
+    log('　・拡張機能（広告ブロッカー等）→ シークレットウィンドウで試す');
+    log('　・社内/学内ネットワーク → 別の回線（スマホのテザリング等）で試す');
+  }
+  log('');
+  log('▼ 確実に動く回避策（3分）：');
+  log('　1.「クエリをコピー」ボタンを押す');
+  log('　2. https://overpass-turbo.eu を開いて、左のエディタに貼り付けて「実行」');
+  log('　3. 「エクスポート」→「データ」→「生データを raw OSM data としてダウンロード」でJSON保存');
+  log('　4. このページの「JSONを読み込む」でそのファイルを選ぶ → 以降は普通に生成できます');
+}
+
+// ---------------- 診断・手動読み込み ----------------
+$('diag').onclick = async ()=>{
+  $('log').innerHTML=''; $('diag').disabled=true;
+  log('各サーバーに小さなテストを投げます…');
+  const tiny = `[out:json][timeout:20];node(${state.lat.toFixed(4)},${state.lon.toFixed(4)},${(state.lat+0.002).toFixed(4)},${(state.lon+0.002).toFixed(4)})["amenity"];out 3;`;
+  let ok=0;
+  for(const [name,url] of OVERPASS){
+    const t0=performance.now();
+    try{
+      const j = await askOverpass(url, tiny, 20000);
+      const c = (j.elements||[]).length;
+      if(c===0) log(`  △ ${name}: 接続OKだが該当データ0件（この地域を持たないミラーかも / ${((performance.now()-t0)/1000).toFixed(1)}秒）`);
+      else { log(`  ✓ ${name}: OK（${c}件 / ${((performance.now()-t0)/1000).toFixed(1)}秒）`); ok++; }
+    }catch(e){ log(`  × ${name}: ${e.message||e}`); }
+  }
+  log(ok? `\n${ok}台が使えます。コース生成を実行できます。` : '');
+  if(!ok) showBlockedHelp('BLOCKED');
+  $('diag').disabled=false;
+};
+
+$('copyq').onclick = async ()=>{
+  const km=+$('dist').value;
+  const q = buildQuery(state.lat, state.lon, radiusFor(km), state.reward||null, +$('nat').value);
+  try{ await navigator.clipboard.writeText(q); log('クエリをコピーしました。overpass-turbo.eu に貼り付けて実行してください。'); }
+  catch(e){ log('コピーできませんでした。下のテキストを手動でコピーしてください：'); log('<textarea style="width:100%;height:120px;font-size:10px">'+q.replace(/</g,'&lt;')+'</textarea>'); }
+};
+
+$('loadbtn').onclick = ()=>$('loadfile').click();
+$('loadfile').onchange = async (e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const txt = await f.text();
+    const j = JSON.parse(txt);
+    const els = j.elements || j;
+    if(!Array.isArray(els)) throw new Error('elements配列が見つかりません');
+    state.localElements = els;
+    log(`✓ ${f.name} を読み込みました（${(els.length/1000).toFixed(1)}k要素）。以降はこのデータでコースを作ります。`);
+    log('（オンラインに戻したいときはページを再読み込みしてください）');
+  }catch(err){ log('読み込み失敗: '+err.message,'err'); }
+};
+
+// ---------------- コースの共有（Googleマップ / QR） ----------------
+function cumulative(coords){
+  const acc=[0];
+  for(let i=1;i<coords.length;i++)
+    acc.push(acc[i-1] + RC.haversine(coords[i-1][0],coords[i-1][1],coords[i][0],coords[i][1]));
+  return acc;
+}
+function pickWaypoints(c, n){
+  const acc = cumulative(c.coords), total = acc[acc.length-1];
+  const at = (frac)=>{
+    const target = total*frac;
+    let lo=0, hi=acc.length-1;
+    while(lo<hi){ const mid=(lo+hi)>>1; if(acc[mid]<target) lo=mid+1; else hi=mid; }
+    return c.coords[lo];
+  };
+  const pts=[];
+  const slots = c.reward ? n-1 : n;
+  for(let k=1;k<=slots;k++) pts.push(at(k/(slots+1)));
+  if(c.reward) pts.push([c.reward.lat, c.reward.lon]);
+  return pts;
+}
+const fmt = (p)=>`${(+p[0]).toFixed(5)},${(+p[1]).toFixed(5)}`;
+function gmapsUrl(c, wpCount){
+  const s0=[state.lat,state.lon];
+  const wp = pickWaypoints(c, wpCount).map(fmt).join('|');
+  return 'https://www.google.com/maps/dir/?api=1'
+    + '&origin=' + fmt(s0) + '&destination=' + fmt(s0)
+    + '&travelmode=walking&waypoints=' + encodeURIComponent(wp);
+}
+
+// ---------------- 表示 ----------------
+const onPhone = matchMedia('(max-width:760px)').matches;
+
+function bar(label, val, max){
+  const pct = Math.max(2, Math.min(100, Math.round(val/max*100)));
+  const col = label==='しぜん'?BAR.nature:label==='にぎわい'?BAR.buzz:BAR.sight;
+  return `<div class="bar-row"><span class="lb">${label}</span>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div>
+    <span class="n">${val}</span></div>`;
+}
+
+function render(){
+  routeLayer.clearLayers();
+  const cards=[];
+  state.courses.forEach((c,i)=>{
+    const col=COLORS[i%3];
+    const line=L.polyline(c.coords,{color:col,weight:i===state.sel?7:4,opacity:i===state.sel?0.95:0.4}).addTo(routeLayer);
+    line.on('click',()=>select(i));
+    if(i===state.sel){
+      c.highlights.forEach(h=>{
+        L.circleMarker([h.poi.lat,h.poi.lon],{radius:6,color:'#f0e6d2',weight:2,fillColor:'#4f8fd6',fillOpacity:1})
+          .addTo(routeLayer).bindTooltip(`${h.poi.name}（${h.poi.label}）`);
+      });
+      if(c.reward) L.circleMarker([c.reward.lat,c.reward.lon],{radius:9,color:'#f0e6d2',weight:3,fillColor:'#e8c25f',fillOpacity:1})
+        .addTo(routeLayer).bindTooltip(`ゴール前：${c.reward.name}`,{permanent:false});
+    }
+
+    if(i===state.sel){
+      const hl=c.highlights.slice(0,6).map(h=>`<span class="tag">${h.poi.name}</span>`).join('');
+      cards.push(`<div class="card sel" data-i="${i}"><div class="inner">
+        <h3><span class="dot" style="background:${col}"></span>コース${i+1}
+          <span class="badge">★せんたくちゅう</span></h3>
+        <div class="km-big">${(c.total/1000).toFixed(2)}<span class="unit">km</span></div>
+        <div class="meta">もくひょうとのズレ ${(c.err*100).toFixed(0)}% ／ かぶり ${(c.overlap*100).toFixed(0)}%</div>
+        <div class="bars">
+          ${bar('しぜん', c.mix.nature, 30)}
+          ${bar('にぎわい', c.mix.buzz, 30)}
+          ${bar('めいしょ', c.mix.sight, 30)}
+        </div>
+        <div>${c.reward?`<span class="tag rw">♨ ゴール前：${c.reward.name}</span>`:''}${hl||'<span class="meta">（名前付きスポットなし）</span>'}</div>
+        <div class="actions">
+          ${onPhone
+            ? `<a class="act main" href="${gmapsUrl(c,3)}" target="_blank" rel="noopener">Googleマップで開く</a>
+               <button class="act" data-qr="${i}">QRを表示</button>`
+            : `<button class="act main" data-qr="${i}">スマホで開く</button>
+               <a class="act" href="${gmapsUrl(c,9)}" target="_blank" rel="noopener">Googleマップで開く</a>`}
+          <a class="act ghost" href="#" data-gpx="${i}">GPXを書き出す</a>
+        </div>
+        <div class="qrbox" id="qr${i}" hidden></div>
+      </div></div>`);
+    }else{
+      cards.push(`<div class="card tag" data-i="${i}">
+        <span class="dot" style="background:${col}"></span>
+        <span class="nm">コース${i+1}</span>
+        <span class="km">${(c.total/1000).toFixed(2)}km</span>
+        <span class="go">▶選択</span>
+      </div>`);
+    }
+  });
+  $('cards').innerHTML=cards.join('');
+  const b=L.latLngBounds(state.courses[state.sel].coords); map.fitBounds(b,{padding:[30,30]});
+  $('cards').onclick=(e)=>{
+    const g=e.target.dataset.gpx;
+    if(g!=null){ e.preventDefault(); downloadGpx(state.courses[+g],+g); return; }
+    const q=e.target.dataset.qr;
+    if(q!=null){ e.preventDefault(); toggleQr(+q); return; }
+    const card=e.target.closest('.card'); if(card) select(+card.dataset.i);
+  };
+}
+function select(i){ state.sel=i; render(); }
+
+function toggleQr(i){
+  const box=$('qr'+i);
+  if(!box.hidden){ box.hidden=true; return; }
+  const c=state.courses[i];
+  const url=gmapsUrl(c,3);
+  try{
+    const qr=QR.encode(url);
+    box.innerHTML = QR.toSvg(qr,{cell:4})
+      + `<div class="qrnote">スマホのカメラで読み取ると、Googleマップの徒歩ルートが開きます。<br>
+         ※ 経由地はスマホだと3か所までなので、実際に案内される道は多少ずれます。
+         正確なコースが必要なときは GPX を使ってください。</div>`
+      + `<div class="qrurl">${url}</div>`;
+  }catch(err){
+    box.innerHTML = `<div class="qrnote">QRを作れませんでした: ${err.message}</div>`;
+  }
+  box.hidden=false;
+}
+
+document.body.classList.add('ready');
+
+function downloadGpx(c,i){
+  const pts=c.coords.map(([la,lo])=>`<trkpt lat="${la.toFixed(6)}" lon="${lo.toFixed(6)}"></trkpt>`).join('\n');
+  const gpx=`<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="trailquest-prototype" xmlns="http://www.topografix.com/GPX/1/1">
+<metadata><name>${state.name} ${(c.total/1000).toFixed(1)}km</name></metadata>
+<trk><name>コース${i+1}${c.reward?' → '+c.reward.name:''}</name><trkseg>
+${pts}
+</trkseg></trk></gpx>`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([gpx],{type:'application/gpx+xml'}));
+  a.download=`course_${(c.total/1000).toFixed(1)}km.gpx`; a.click();
+}
+})();
+</script>
+</body>
+</html>
