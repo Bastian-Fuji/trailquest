@@ -124,10 +124,10 @@
       if (el.type === 'node') {
         coord.set(el.id, [el.lat, el.lon]);
         const c = classifyPoi(el.tags);
-        if (c && (el.tags.name || c.cat === 'water' || c.cat === 'green')) poiRaw.push({ ...c, lat: el.lat, lon: el.lon, name: el.tags.name || el.tags['name:ja'] || c.label, tags: el.tags });
+        if (c && (el.tags.name || c.cat === 'water' || c.cat === 'green')) poiRaw.push({ ...c, lat: el.lat, lon: el.lon, name: el.tags.name || el.tags['name:ja'] || c.label, tags: el.tags, osmId: `node/${el.id}` });
       } else if ((el.type === 'way' || el.type === 'relation') && el.center) {
         const c = classifyPoi(el.tags);
-        if (c) poiRaw.push({ ...c, lat: el.center.lat, lon: el.center.lon, name: (el.tags && (el.tags.name || el.tags['name:ja'])) || c.label, tags: el.tags || {} });
+        if (c) poiRaw.push({ ...c, lat: el.center.lat, lon: el.center.lon, name: (el.tags && (el.tags.name || el.tags['name:ja'])) || c.label, tags: el.tags || {}, osmId: `${el.type}/${el.id}` });
       }
     }
 

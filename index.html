@@ -81,6 +81,24 @@
   .qrnote{font-size:10px;color:#3a3320;margin-top:8px;line-height:1.6;text-align:left;font-family:var(--font-dot)}
   .qrurl{font-size:9px;color:#6b5f42;word-break:break-all;margin-top:6px;text-align:left}
   .err{color:var(--buzz)}
+
+  .dexbtn{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:11px;flex:0 0 auto}
+  .dexbtn .dexcount{background:var(--gold);color:#241a08;font-weight:700;padding:1px 6px;font-size:10px}
+  .dex-overlay{position:fixed;inset:0;background:rgba(10,8,20,.78);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px}
+  .dex-overlay[hidden]{display:none}
+  .dex-frame{background:var(--hud-border);padding:5px;width:min(640px,92vw);max-height:86vh}
+  .dex-box{background:var(--panel);border:3px solid var(--hud-inner);display:flex;flex-direction:column;max-height:calc(86vh - 10px)}
+  .dex-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:2px solid var(--line);flex:0 0 auto}
+  .dex-head .t{font-size:14px;font-weight:700;color:var(--gold)}
+  .dex-x{background:none;border:2px solid var(--line);color:var(--dim);width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center}
+  .dex-sub{padding:10px 18px 0;font-size:11px;color:var(--dim);flex:0 0 auto}
+  .dex-grid{overflow-y:auto;padding:14px 18px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;align-content:start}
+  .dex-item{background:var(--card);border:2px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--dim)}
+  .dex-item .th{width:100%;height:70px;object-fit:cover;display:block;background:var(--track)}
+  .dex-item .ic2{width:100%;height:70px;display:flex;align-items:center;justify-content:center;background:var(--track)}
+  .dex-item .nm2{color:var(--fg);font-weight:700;font-size:10.5px;line-height:1.3}
+  .dex-group-title{grid-column:1/-1;font-size:10px;color:var(--dim2);letter-spacing:1px;margin-top:6px}
+  .dex-group-title:first-child{margin-top:0}
   @media(max-width:760px){
     #wrap{flex-direction:column}
     #panel{width:100%;flex:0 0 auto;max-height:52%}
@@ -129,7 +147,13 @@
       このページはJavaScriptが動かない状態で開かれています。メールやファイルアプリの
       <b style="display:inline">プレビュー画面</b>ではなく、Safari や Chrome などのブラウザで開き直してください。
     </div>
-    <div class="title">TRAIL<span class="accent">QUEST</span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div class="title">TRAIL<span class="accent">QUEST</span></div>
+      <button id="dexbtn" class="dexbtn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H12v18H6.5A2.5 2.5 0 0 0 4 22V4.5z"/><path d="M20 4.5A2.5 2.5 0 0 0 17.5 2H12v18h5.5a2.5 2.5 0 0 1 2.5 2V4.5z"/></svg>
+        図鑑<span class="dexcount" id="dexcount">0</span>
+      </button>
+    </div>
     <div class="sub">OpenStreetMap のデータから、要望に合う周回コースをその場で計算します。地図をクリックすると起点を変更できます。<br>※アルゴリズム検証用。距離は概算です。</div>
 
     <label>起点 <span class="val" id="ptxt">上野</span></label>
@@ -169,6 +193,21 @@
       <button data-t="pale" class="on">地図</button>
       <button data-t="photo">航空写真</button>
       <button data-t="osm">詳細</button>
+    </div>
+  </div>
+</div>
+
+<div id="dex" class="dex-overlay" hidden>
+  <div class="dex-frame">
+    <div class="dex-box">
+      <div class="dex-head">
+        <span class="t">名所図鑑</span>
+        <button id="dexclose" class="dex-x" aria-label="閉じる">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
+        </button>
+      </div>
+      <div class="dex-sub" id="dexsub"></div>
+      <div class="dex-grid" id="dexgrid"></div>
     </div>
   </div>
 </div>
@@ -301,10 +340,10 @@
       if (el.type === 'node') {
         coord.set(el.id, [el.lat, el.lon]);
         const c = classifyPoi(el.tags);
-        if (c && (el.tags.name || c.cat === 'water' || c.cat === 'green')) poiRaw.push({ ...c, lat: el.lat, lon: el.lon, name: el.tags.name || el.tags['name:ja'] || c.label, tags: el.tags });
+        if (c && (el.tags.name || c.cat === 'water' || c.cat === 'green')) poiRaw.push({ ...c, lat: el.lat, lon: el.lon, name: el.tags.name || el.tags['name:ja'] || c.label, tags: el.tags, osmId: `node/${el.id}` });
       } else if ((el.type === 'way' || el.type === 'relation') && el.center) {
         const c = classifyPoi(el.tags);
-        if (c) poiRaw.push({ ...c, lat: el.center.lat, lon: el.center.lon, name: (el.tags && (el.tags.name || el.tags['name:ja'])) || c.label, tags: el.tags || {} });
+        if (c) poiRaw.push({ ...c, lat: el.center.lat, lon: el.center.lon, name: (el.tags && (el.tags.name || el.tags['name:ja'])) || c.label, tags: el.tags || {}, osmId: `${el.type}/${el.id}` });
       }
     }
 
@@ -1618,7 +1657,7 @@ function poiPopupHtml(poi, state){ // state: 'loading' | data(object|null after 
     ? `<div class="src">出典: ${state.link?`<a href="${state.link}" target="_blank" rel="noopener">${state.src}</a>`:state.src}</div>` : '';
   return `<div class="poi-pop">${photo}<div class="body">
     <div class="nm">${escapeHtml(poi.name||poi.label)}</div>
-    <div class="cat">${escapeHtml(poi.label)}</div>
+    <div class="cat">${poi.note?escapeHtml(poi.note)+' ・ ':''}${escapeHtml(poi.label)}</div>
     ${ex}${src}
   </div></div>`;
 }
@@ -1626,18 +1665,67 @@ function poiPopupHtml(poi, state){ // state: 'loading' | data(object|null after 
 /** マーカーに、写真つきポップアップ（クリック）とホバー用の短いツールチップを付ける。
  *  OSMタグに手がかりが無くても、座標付近のCommons写真を探しに行くので毎回「さがしています…」から始める。 */
 function attachPoiPopup(marker, poi){
-  marker.bindTooltip(`${poi.name}${poi.label?'（'+poi.label+'）':''}`);
+  marker.bindTooltip(`${poi.note?poi.note+'：':''}${poi.name}${poi.label?'（'+poi.label+'）':''}`);
   const tags = poi.tags||{};
   marker.bindPopup(poiPopupHtml(poi,'loading'), {maxWidth:240,minWidth:220});
   let started=false;
   marker.on('popupopen', async ()=>{
     if(started) return; started=true;
+    recordDiscovery(poi);
     const key = tags.wikipedia || tags.wikidata || tags.image || `${poi.lat.toFixed(5)},${poi.lon.toFixed(5)}`;
     let data = photoCache.has(key) ? photoCache.get(key) : undefined;
     if(data===undefined){ data = await resolvePhoto(poi); photoCache.set(key,data); }
+    if(data && data.img) updateDexPhoto(poi, data.img);
     marker.setPopupContent(poiPopupHtml(poi,data));
   });
 }
+
+// ---------------- 名所図鑑（localStorageに保存。アカウント不要） ----------------
+const DEX_KEY = 'trailquest_dex_v1';
+function loadDex(){ try{ return JSON.parse(localStorage.getItem(DEX_KEY)||'{}'); }catch(e){ return {}; } }
+function saveDex(d){ try{ localStorage.setItem(DEX_KEY, JSON.stringify(d)); }catch(e){ /* 保存領域が無い・シークレットモード等。図鑑機能だけ効かなくなる */ } }
+let dex = loadDex();
+const dexKeyFor = (poi)=> poi.osmId || `${poi.lat.toFixed(5)},${poi.lon.toFixed(5)}`;
+
+/** ポップアップを開いた＝そのスポットを「発見」したとみなして記録する */
+function recordDiscovery(poi){
+  const key = dexKeyFor(poi);
+  if(!dex[key]){
+    dex[key] = { name: poi.name||poi.label, label: poi.label, cat: poi.cat, img: null, first: Date.now() };
+    saveDex(dex);
+    updateDexBadge();
+  }
+}
+/** 写真が後から見つかったら、図鑑のサムネイルにも反映する */
+function updateDexPhoto(poi, img){
+  const key = dexKeyFor(poi);
+  if(dex[key] && !dex[key].img){ dex[key].img = img; saveDex(dex); }
+}
+function updateDexBadge(){ $('dexcount').textContent = Object.keys(dex).length; }
+
+function renderDex(){
+  const entries = Object.values(dex);
+  $('dexsub').textContent = entries.length
+    ? `これまでに見つけたスポット：${entries.length}件`
+    : 'まだ何も見つけていません。地図のマーカーやタグをクリックすると、ここに記録されていきます。';
+  const groups = {};
+  entries.sort((a,b)=>b.first-a.first).forEach(e=>{ (groups[e.label]=groups[e.label]||[]).push(e); });
+  const order = Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
+  $('dexgrid').innerHTML = order.map(label=>{
+    const items = groups[label].map(e=>{
+      const {svg,color} = catIcon(e.cat);
+      const thumb = e.img
+        ? `<img class="th" src="${e.img}" alt="${escapeHtml(e.name)}" loading="lazy">`
+        : `<div class="ic2" style="color:${color}">${svg}</div>`;
+      return `<div class="dex-item">${thumb}<div class="nm2">${escapeHtml(e.name)}</div></div>`;
+    }).join('');
+    return `<div class="dex-group-title">${escapeHtml(label)}（${groups[label].length}）</div>${items}`;
+  }).join('');
+}
+$('dexbtn').onclick = ()=>{ renderDex(); $('dex').hidden=false; };
+$('dexclose').onclick = ()=>{ $('dex').hidden=true; };
+$('dex').onclick = (e)=>{ if(e.target.id==='dex') $('dex').hidden=true; };
+updateDexBadge();
 
 function bar(label, val, max){
   const pct = Math.max(2, Math.min(100, Math.round(val/max*100)));
@@ -1665,7 +1753,7 @@ function render(){
       if(c.reward){
         const m = L.circleMarker([c.reward.lat,c.reward.lon],{radius:9,color:'#f0e6d2',weight:3,fillColor:'#e8c25f',fillOpacity:1})
           .addTo(routeLayer);
-        attachPoiPopup(m, {...c.reward, label:'ゴール前・'+(c.reward.label||'ご褒美')});
+        attachPoiPopup(m, {...c.reward, note:'ゴール前'});
         hlMarkers.reward=m;
       }
     }
