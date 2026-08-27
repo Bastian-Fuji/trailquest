@@ -1946,10 +1946,11 @@ function addFavorite(i){
 
 /** 記録・お気に入りのルートを地図に描く（生成中のコースとは別レイヤなので混ざらない） */
 function showSavedRoute(entry){
+  if(!Array.isArray(entry.coords) || !entry.coords.length) return; // アップデート前の記録には経路が無い。念のための保険（UI側は既にボタンを出し分けている）
   $('dex').hidden = true; $('runlog').hidden = true; $('favs').hidden = true;
   viewLayer.clearLayers();
   L.polyline(entry.coords, {color:'#e8c25f', weight:6, opacity:0.9, dashArray:'2 10'}).addTo(viewLayer);
-  entry.highlights.forEach((poi)=>{
+  (entry.highlights||[]).forEach((poi)=>{
     const m = L.circleMarker([poi.lat,poi.lon], {radius:6,color:'#f0e6d2',weight:2,fillColor:'#4f8fd6',fillOpacity:1}).addTo(viewLayer);
     attachPoiPopup(m, poi);
   });
@@ -1987,7 +1988,9 @@ function renderRunlog(){
       <div class="sub2">スポット${e.spots}件${elev}</div>
       ${rw}
       <div class="actions" style="margin-top:4px">
-        <button class="act" data-viewrun="${e.id}">地図で見る</button>
+        ${Array.isArray(e.coords) && e.coords.length
+          ? `<button class="act" data-viewrun="${e.id}">地図で見る</button>`
+          : `<span class="sub2" style="color:var(--dim2)">この記録には経路が保存されていません（アップデート前の記録）</span>`}
       </div>
     </div>`;
   }).join('');
@@ -2014,7 +2017,7 @@ function renderFavs(){
       <div class="sub2">スポット${e.spots}件${elev}</div>
       ${rw}
       <div class="actions" style="margin-top:4px">
-        <button class="act" data-viewfav="${e.id}">地図で見る</button>
+        ${Array.isArray(e.coords) && e.coords.length ? `<button class="act" data-viewfav="${e.id}">地図で見る</button>` : ''}
         <button class="act ghost" data-delfav="${e.id}">削除</button>
       </div>
     </div>`;
