@@ -36,6 +36,8 @@
   .title{font-family:var(--font-px);font-size:18px;color:var(--fg);letter-spacing:1px;margin:0 0 4px}
   .title .accent{color:var(--gold)}
   .sub{font-size:12px;color:var(--dim);margin-bottom:16px;line-height:1.6}
+  .titlelink{flex:0 0 auto;background:none;border:2px solid var(--line);color:var(--dim);padding:5px 9px;font-size:11px}
+  .titlelink:hover{border-color:var(--gold);color:var(--gold)}
   label{display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;font-weight:700;letter-spacing:.5px}
   input[type=text]{width:100%;padding:9px 10px;background:var(--track);border:2px solid var(--hud-inner);color:var(--fg);font-family:var(--font-dot);font-size:13px}
   input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;background:var(--track);border:2px solid var(--hud-inner)}
@@ -92,23 +94,28 @@
   /* ---------------- タイトル画面 ---------------- */
   @keyframes titleblink{0%,49%{opacity:1}50%,100%{opacity:0}}
   #titlescreen{position:fixed;inset:0;z-index:3000;background:var(--bg);display:flex;flex-direction:column;
-    align-items:center;text-align:center;padding:5vh 0 4vh}
+    align-items:center;text-align:center;padding:2.5vh 0 2vh}
   #titlescreen[hidden]{display:none}
-  #titlescreen .eyebrow{font-family:var(--font-px);font-size:clamp(9px,2.6vw,13px);color:var(--dim);letter-spacing:4px}
-  #titlescreen .logo{font-family:var(--font-px);color:var(--fg);letter-spacing:2px;line-height:1.3;
-    font-size:clamp(28px,9vw,64px);margin-top:12px;text-shadow:0 3px 0 var(--hud-inner)}
+  #titlescreen .eyebrow{font-family:var(--font-px);font-size:clamp(9px,2.6vw,13px);color:var(--dim);letter-spacing:4px;flex:0 0 auto}
+  #titlescreen .logo{font-family:var(--font-px);color:var(--fg);letter-spacing:2px;line-height:1.15;
+    font-size:clamp(24px,6.5vw,44px);margin-top:8px;text-shadow:0 3px 0 var(--hud-inner);flex:0 0 auto}
   #titlescreen .logo .accent{color:var(--gold)}
-  #titlescreen .rule{width:120px;height:2px;margin:16px auto 0;
+  /* 横に十分な幅がある画面では改行させず1行にして、縦のスペースをイラストに回す */
+  @media(min-width:640px){
+    #titlescreen .logo{white-space:nowrap}
+    #titlescreen .logo .lb{display:none}
+  }
+  #titlescreen .rule{width:120px;height:2px;margin:10px auto 0;flex:0 0 auto;
     background:repeating-linear-gradient(to right,var(--gold) 0 6px,transparent 6px 12px)}
-  #titlescreen .scene{flex:1;min-height:0;width:100%;max-width:900px;margin:2vh auto 0}
+  #titlescreen .scene{flex:1 1 auto;min-height:140px;width:100%;max-width:900px;margin:1.5vh auto 0}
   #titlescreen .scene svg{display:block;width:100%;height:100%}
   #titlescreen .tagline{font-family:var(--font-dot);font-size:clamp(13px,3.2vw,17px);color:var(--fg);
-    line-height:1.8;margin:1.5vh 0}
+    line-height:1.6;margin:1vh 0;flex:0 0 auto}
   #titlescreen #startbtn{display:block;width:min(80vw,300px);margin:0 auto;background:var(--gold);color:#241a08;
-    border:3px solid var(--hud-border);padding:15px;font-family:var(--font-px);
+    border:3px solid var(--hud-border);padding:15px;font-family:var(--font-px);flex:0 0 auto;
     font-size:clamp(13px,3.4vw,16px);letter-spacing:2px;box-shadow:0 4px 0 var(--hud-inner);cursor:pointer}
-  #titlescreen .prompt{animation:titleblink 0.9s steps(1) infinite;margin-top:12px;font-size:11px;color:var(--dim)}
-  #titlescreen .foot{margin-top:2vh;font-size:9px;color:var(--dim2);letter-spacing:1px}
+  #titlescreen .prompt{animation:titleblink 0.9s steps(1) infinite;margin-top:10px;font-size:11px;color:var(--dim);flex:0 0 auto}
+  #titlescreen .foot{margin-top:1.2vh;font-size:9px;color:var(--dim2);letter-spacing:1px;flex:0 0 auto}
 
   .mapbtns{position:absolute;z-index:500;left:10px;bottom:10px;display:flex;background:var(--panel);
     border:2px solid var(--hud-border);box-shadow:0 2px 0 rgba(0,0,0,.4)}
@@ -213,7 +220,7 @@
 </div>
 <div id="titlescreen">
   <div class="eyebrow">A RUNNING QUEST</div>
-  <div class="logo">TRAIL<br><span class="accent">QUEST</span></div>
+  <div class="logo">TRAIL<br class="lb"><span class="accent">QUEST</span></div>
   <div class="rule"></div>
 
   <div class="scene">
@@ -303,7 +310,10 @@
 
 <div id="wrap">
   <div id="panel">
-    <div class="title">TRAIL<span class="accent">QUEST</span></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+      <div class="title">TRAIL<span class="accent">QUEST</span></div>
+      <button id="titlebtn" class="titlelink">タイトルへ</button>
+    </div>
     <div class="sub">OpenStreetMap のデータから、要望に合う周回コースをその場で計算します。地図をクリックすると起点を変更できます。<br>※アルゴリズム検証用。距離は概算です。</div>
 
     <label>起点 <span class="val" id="ptxt">上野</span></label>
@@ -345,9 +355,6 @@
       <button data-t="osm">詳細</button>
     </div>
     <div class="mapbtns" id="mapbtns">
-      <button id="titlebtn" class="dexbtn" title="タイトル画面に戻る" aria-label="タイトル画面に戻る">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
-      </button>
       <button id="runlogbtn" class="dexbtn">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>
         記録<span class="dexcount" id="runlogcount">0</span>
