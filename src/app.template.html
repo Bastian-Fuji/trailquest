@@ -100,15 +100,19 @@
   #titlescreen .logo{font-family:var(--font-px);color:var(--fg);letter-spacing:2px;line-height:1.15;
     font-size:clamp(24px,6.5vw,44px);margin-top:8px;text-shadow:0 3px 0 var(--hud-inner);flex:0 0 auto}
   #titlescreen .logo .accent{color:var(--gold)}
-  /* 横に十分な幅がある画面では改行させず1行にして、縦のスペースをイラストに回す */
-  @media(min-width:640px){
-    #titlescreen .logo{white-space:nowrap}
-    #titlescreen .logo .lb{display:none}
-  }
   #titlescreen .rule{width:120px;height:2px;margin:10px auto 0;flex:0 0 auto;
     background:repeating-linear-gradient(to right,var(--gold) 0 6px,transparent 6px 12px)}
   #titlescreen .scene{flex:1 1 auto;min-height:140px;width:100%;max-width:900px;margin:1.5vh auto 0}
   #titlescreen .scene svg{display:block;width:100%;height:100%}
+  #titlescreen .scene-desktop{display:none}
+  /* 横に十分な幅がある画面では、タイトルを1行にして縦を詰め、情景も縦長ではなく横長のものに差し替える */
+  @media(min-width:640px){
+    #titlescreen .logo{white-space:nowrap}
+    #titlescreen .logo .lb{display:none}
+    #titlescreen .scene{max-width:1180px}
+    #titlescreen .scene-mobile{display:none}
+    #titlescreen .scene-desktop{display:block}
+  }
   #titlescreen .tagline{font-family:var(--font-dot);font-size:clamp(13px,3.2vw,17px);color:var(--fg);
     line-height:1.6;margin:1vh 0;flex:0 0 auto}
   #titlescreen #startbtn{display:block;width:min(80vw,300px);margin:0 auto;background:var(--gold);color:#241a08;
@@ -224,7 +228,7 @@
   <div class="rule"></div>
 
   <div class="scene">
-    <svg viewBox="0 0 390 430" preserveAspectRatio="xMidYMid meet">
+    <svg class="scene-mobile" viewBox="0 0 390 430" preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id="titleSky" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#14102a"/>
@@ -281,6 +285,95 @@
       </g>
 
       <g transform="translate(200,414)">
+        <ellipse cx="0" cy="2" rx="15" ry="4" fill="#000" opacity="0.35"/>
+        <rect x="-10" y="-24" width="8" height="24" fill="#2c2450"/>
+        <rect x="2" y="-20" width="8" height="20" fill="#2c2450"/>
+        <rect x="-11" y="-4" width="10" height="6" fill="#150f28"/>
+        <rect x="1" y="-2" width="10" height="6" fill="#150f28"/>
+        <rect x="-13" y="-46" width="26" height="24" fill="var(--gold)"/>
+        <rect x="-13" y="-27" width="26" height="4" fill="var(--hud-inner)"/>
+        <rect x="9" y="-44" width="9" height="17" fill="#8a5a3a"/>
+        <rect x="-18" y="-44" width="6" height="18" fill="#e8c9a0"/>
+        <rect x="12" y="-46" width="6" height="20" fill="#e8c9a0"/>
+        <rect x="-9" y="-62" width="18" height="16" fill="#e8c9a0"/>
+        <rect x="-10" y="-67" width="20" height="8" fill="var(--gold)"/>
+        <rect x="-6" y="-55" width="3" height="3" fill="#241a08"/>
+        <rect x="3" y="-55" width="3" height="3" fill="#241a08"/>
+        <rect x="17" y="-82" width="3" height="38" fill="var(--hud-border)"/>
+        <rect x="20" y="-82" width="14" height="7" fill="var(--c2)"/>
+        <rect x="20" y="-75" width="9" height="7" fill="var(--c2)"/>
+      </g>
+    </svg>
+
+    <svg class="scene-desktop" viewBox="0 0 1440 640" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="titleSkyD" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#14102a"/>
+          <stop offset="55%" stop-color="#2b1f4d"/>
+          <stop offset="100%" stop-color="#523f72"/>
+        </linearGradient>
+        <radialGradient id="titleMoonglowD" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#e8c25f" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="#e8c25f" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <rect x="0" y="0" width="1440" height="640" fill="url(#titleSkyD)"/>
+
+      <g fill="#f3ecd9">
+        <rect x="60" y="30" width="3" height="3" opacity="0.8"/>
+        <rect x="150" y="70" width="2" height="2" opacity="0.5"/>
+        <rect x="260" y="24" width="2" height="2" opacity="0.7"/>
+        <rect x="420" y="50" width="3" height="3" opacity="0.6"/>
+        <rect x="520" y="20" width="2" height="2" opacity="0.9"/>
+        <rect x="700" y="60" width="3" height="3" opacity="0.7"/>
+        <rect x="820" y="30" width="2" height="2" opacity="0.6"/>
+        <rect x="960" y="80" width="2" height="2" opacity="0.5"/>
+        <rect x="1080" y="40" width="3" height="3" opacity="0.7"/>
+        <rect x="1240" y="60" width="2" height="2" opacity="0.5"/>
+        <rect x="1340" y="24" width="2" height="2" opacity="0.8"/>
+        <rect x="90" y="120" width="2" height="2" opacity="0.5"/>
+        <rect x="600" y="100" width="2" height="2" opacity="0.5"/>
+        <rect x="1150" y="120" width="2" height="2" opacity="0.5"/>
+      </g>
+
+      <circle cx="1180" cy="90" r="52" fill="url(#titleMoonglowD)"/>
+      <circle cx="1180" cy="90" r="26" fill="var(--gold)"/>
+      <circle cx="1192" cy="80" r="23" fill="#14102a" opacity="0.55"/>
+
+      <polygon points="0,380 100,360 220,372 340,344 460,364 580,336 700,358 820,332 940,356 1060,330 1180,352 1300,326 1440,346 1440,640 0,640"
+        fill="#3a2f5a"/>
+      <g transform="translate(300,352)" stroke="#241a3d" stroke-width="5" fill="none" stroke-linecap="square">
+        <line x1="-15" y1="20" x2="-15" y2="0"/>
+        <line x1="15" y1="20" x2="15" y2="0"/>
+        <line x1="-21" y1="0" x2="21" y2="0"/>
+        <line x1="-24" y1="9" x2="24" y2="9"/>
+      </g>
+      <g transform="translate(980,344)" stroke="#241a3d" stroke-width="4" fill="none" stroke-linecap="square">
+        <line x1="0" y1="24" x2="0" y2="-14"/>
+        <line x1="-11" y1="-14" x2="11" y2="-14"/>
+        <line x1="-8" y1="-8" x2="8" y2="-8"/>
+        <line x1="-6" y1="-2" x2="6" y2="-2"/>
+      </g>
+
+      <polygon points="0,450 120,432 260,448 400,420 540,442 680,414 820,438 960,410 1100,436 1240,408 1440,428 1440,640 0,640"
+        fill="#2c2450"/>
+
+      <path d="M720,640 L720,566 L680,566 L680,510 L640,510 L640,462 L656,462 L656,404"
+        fill="none" stroke="var(--hud-border)" stroke-width="20" stroke-linecap="square"/>
+      <path d="M720,640 L720,566 L680,566 L680,510 L640,510 L640,462 L656,462 L656,404"
+        fill="none" stroke="#d8c9a2" stroke-width="20" stroke-linecap="square" stroke-dasharray="1 17" opacity="0.7"/>
+
+      <polygon points="0,560 200,542 420,558 640,536 860,558 1080,538 1300,556 1440,542 1440,640 0,640" fill="#231a40"/>
+
+      <g fill="#3f6e52">
+        <rect x="250" y="540" width="30" height="20"/>
+        <rect x="244" y="554" width="42" height="12"/>
+        <rect x="1080" y="536" width="26" height="20"/>
+        <rect x="1074" y="550" width="38" height="12"/>
+      </g>
+
+      <g transform="translate(750,608) scale(1.5)">
         <ellipse cx="0" cy="2" rx="15" ry="4" fill="#000" opacity="0.35"/>
         <rect x="-10" y="-24" width="8" height="24" fill="#2c2450"/>
         <rect x="2" y="-20" width="8" height="20" fill="#2c2450"/>
